@@ -5,6 +5,7 @@ import com.ferreteria.fc.domain.dto.request.CreateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.UpdatePatchOrderRequest;
 import com.ferreteria.fc.domain.dto.response.OrderResponse;
+import com.ferreteria.fc.domain.dto.response.OrderSummaryResponse;
 import com.ferreteria.fc.domain.dto.utils.WazeUtils;
 import com.ferreteria.fc.domain.enums.OrderStatus;
 import com.ferreteria.fc.domain.repository.OrderRepository;
@@ -12,10 +13,12 @@ import com.ferreteria.fc.domain.service.OrderService;
 import com.ferreteria.fc.persistence.entity.Order;
 import com.ferreteria.fc.persistence.entity.OrderItem;
 import com.ferreteria.fc.persistence.entity.User;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,9 +44,11 @@ public class OrderServiceImpl implements OrderService {
         order.setAddress(request.getAddress());
         order.setPaymentMethod(request.getPaymentMethod());
         order.setStatus(OrderStatus.CREATED);
+        order.setStatusChangedAt(LocalDateTime.now());
         order.setNotes(request.getNotes());
         order.setCreatedBy(user);
         order.setDeliveryDate(request.getDeliveryDate());
+
 
         List<OrderItem> items = request.getItems().stream().map(i -> {
             OrderItem item = new OrderItem();
@@ -90,40 +95,51 @@ public class OrderServiceImpl implements OrderService {
         order.setAddress(request.getAddress());
         order.setDeliveryDate(request.getDeliveryDate());
         order.setPaymentMethod(request.getPaymentMethod());
-        order.setStatus(request.getStatus());
+        if (request.getStatus() != null &&
+                request.getStatus() != order.getStatus()) {
+
+            order.setStatus(request.getStatus());
+            order.setStatusChangedAt(LocalDateTime.now());
+        }
         order.setNotes(request.getNotes());
 
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
 
-        order.getItems().clear();
+        if (request.getItems() != null) {
 
-        List<OrderItem> items = request.getItems().stream()
-                .map(item -> {
+            order.getItems().clear();
 
-                    OrderItem orderItem = new OrderItem();
+            List<OrderItem> items = request.getItems().stream()
+                    .map(item -> {
 
-                    orderItem.setProductName(item.getProductName());
-                    orderItem.setQuantity(item.getQuantity());
-                    orderItem.setUnitPrice(item.getUnitPrice());
+                        OrderItem orderItem = new OrderItem();
 
-                    orderItem.setTotalPrice(
-                            item.getUnitPrice()
-                                    .multiply(BigDecimal.valueOf(item.getQuantity()))
-                    );
+                        orderItem.setProductName(item.getProductName());
+                        orderItem.setQuantity(item.getQuantity());
+                        orderItem.setUnitPrice(item.getUnitPrice());
 
-                    orderItem.setOrder(order);
+                        orderItem.setTotalPrice(
+                                item.getUnitPrice()
+                                        .multiply(
+                                                BigDecimal.valueOf(item.getQuantity())
+                                        )
+                        );
 
-                    return orderItem;
+                        orderItem.setOrder(order);
 
-                }).toList();
+                        return orderItem;
 
-        order.getItems().addAll(items);
+                    })
+                    .toList();
 
-        order.setTotalAmount(
-                items.stream()
-                        .map(OrderItem::getTotalPrice)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        );
+            order.getItems().addAll(items);
+
+            order.setTotalAmount(
+                    items.stream()
+                            .map(OrderItem::getTotalPrice)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            );
+        }
 
         return orderMapper.toResponse(orderRepository.save(order));
     }
@@ -159,8 +175,11 @@ public class OrderServiceImpl implements OrderService {
             order.setNotes(request.getNotes());
         }
 
-        if(request.getStatus() != null){
+        if (request.getStatus() != null &&
+                request.getStatus() != order.getStatus()) {
+
             order.setStatus(request.getStatus());
+            order.setStatusChangedAt(LocalDateTime.now());
         }
 
         Order saved = orderRepository.save(order);
@@ -170,6 +189,16 @@ public class OrderServiceImpl implements OrderService {
 
     public void delete(Long id) {
         orderRepository.deleteById(id);
+    }
+
+    @Override
+    public List<OrderSummaryResponse> findLatestOrders() {
+        return orderRepository.findLatestOrders(PageRequest.of(0,10));
+    }
+
+    @Override
+    public List<OrderSummaryResponse> findAllSummary() {
+        return orderRepository.findAllOrders();
     }
 
 

@@ -77,4 +77,7 @@ public class Order {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column(name = "status_changed_at")
+    private LocalDateTime statusChangedAt;
 }

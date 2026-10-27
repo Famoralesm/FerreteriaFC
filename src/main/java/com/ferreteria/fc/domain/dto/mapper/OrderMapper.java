@@ -65,6 +65,7 @@ public class OrderMapper {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .role(user.getRole().name())
                 .build();
 
     }

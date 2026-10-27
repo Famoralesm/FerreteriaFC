@@ -1,5 +1,7 @@
 package com.ferreteria.fc.web.controller;
 
+import com.ferreteria.fc.domain.dto.request.CreateCustomerRequest;
+import com.ferreteria.fc.domain.dto.response.CustomerResponse;
 import com.ferreteria.fc.domain.service.CustomerService;
 import com.ferreteria.fc.persistence.entity.Customer;
 import org.springframework.http.ResponseEntity;
@@ -18,17 +20,19 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<Customer> create(@RequestBody Customer customer) {
-        return ResponseEntity.ok(customerService.create(customer));
+    public ResponseEntity<CustomerResponse> createCustomer(@RequestBody CreateCustomerRequest request) {
+        return ResponseEntity.ok(customerService.createCustomer(request));
     }
 
     @GetMapping
-    public ResponseEntity<List<Customer>> getAll() {
-        return ResponseEntity.ok(customerService.getAll());
+    public ResponseEntity<List<CustomerResponse>> getAll() {
+        return ResponseEntity.ok(
+                customerService.getAll()
+        );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Customer> get(@PathVariable Long id) {
+    public ResponseEntity<CustomerResponse> getCustomerById(@PathVariable Long id) {
         return ResponseEntity.ok(customerService.getById(id));
     }
 

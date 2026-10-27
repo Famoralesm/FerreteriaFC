@@ -4,6 +4,7 @@ import com.ferreteria.fc.domain.dto.request.CreateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.UpdatePatchOrderRequest;
 import com.ferreteria.fc.domain.dto.response.OrderResponse;
+import com.ferreteria.fc.domain.dto.response.OrderSummaryResponse;
 import com.ferreteria.fc.domain.service.OrderService;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.User;
@@ -71,5 +72,18 @@ public class OrderController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         orderService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/latest")
+    public List<OrderSummaryResponse> latestOrders(){
+
+        return orderService.findLatestOrders();
+
+    }
+    @GetMapping("/all")
+    public List<OrderSummaryResponse> findAll() {
+
+        return orderService.findAllSummary();
+
     }
 }

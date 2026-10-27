@@ -16,11 +16,6 @@ spring:
       hibernate:
         format_sql: true
 
-  security:
-    user:
-      name: admin@ferreteria.cl
-      password: admin123
-
 jwt:
   secret: 4hJ3Lk29aQz8Mv9YxW7Nc2Pr5Tb8Ez6Fs1Ld9Qa0Rw3Hy6Uk
   expiration: 86400000
