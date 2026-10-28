@@ -8,11 +8,16 @@ import java.util.List;
 
 public interface CustomerService {
 
-    public CustomerResponse createCustomer(CreateCustomerRequest customer);
+    CustomerResponse createCustomer(CreateCustomerRequest customer);
 
-    public  List<CustomerResponse> getAll();
+    List<CustomerResponse> getAll();
 
-    public CustomerResponse getById(Long id);
+    CustomerResponse getById(Long id);
 
-    public void delete(Long id) ;
+    void delete(Long id) ;
+
+    CustomerResponse updateCustomer(
+            Long id,
+            CreateCustomerRequest request
+    );
 }

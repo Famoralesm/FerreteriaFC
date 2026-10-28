@@ -1,0 +1,11 @@
+# Gradle: caché y archivos temporales
+.gradle/
+
+# Resultados de compilación
+build/
+
+# Archivos compilados Java
+*.class
+
+# Logs
+*.log
