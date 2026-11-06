@@ -1,13 +1,19 @@
 package com.ferreteria.fc.domain.service;
 
-import com.ferreteria.fc.persistence.entity.User;
+import com.ferreteria.fc.domain.dto.request.UserRequest;
+import com.ferreteria.fc.domain.dto.response.UserResponse;
 
 import java.util.List;
 
 public interface UserService {
-     User create(User user);
-     List<User> getAll();
-     User getById(Long id);
-     void delete(Long id);
-     User getByEmail(String email);
+
+    UserResponse create(UserRequest request);
+
+    List<UserResponse> getAll();
+
+    UserResponse getById(Long id);
+
+    UserResponse update(Long id, UserRequest request);
+
+    void delete(Long id);
 }

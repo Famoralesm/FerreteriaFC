@@ -1,7 +1,12 @@
 package com.ferreteria.fc.web.controller;
 
+import com.ferreteria.fc.domain.dto.request.UserRequest;
+import com.ferreteria.fc.domain.dto.response.UserResponse;
 import com.ferreteria.fc.domain.service.UserService;
-import com.ferreteria.fc.persistence.entity.User;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,23 +23,43 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> create(@RequestBody User user) {
-        return ResponseEntity.ok(userService.create(user));
+    public ResponseEntity<UserResponse> create(
+            @Valid @RequestBody UserRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(userService.create(request));
     }
 
     @GetMapping
-    public ResponseEntity<List<User>> getAll() {
+    public ResponseEntity<List<UserResponse>> getAll() {
+
         return ResponseEntity.ok(userService.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> get(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getById(
+            @PathVariable Long id
+    ) {
         return ResponseEntity.ok(userService.getById(id));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UserRequest request
+    ) {
+        return ResponseEntity.ok(
+                userService.update(id, request)
+        );
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id
+    ) {
         userService.delete(id);
+
         return ResponseEntity.noContent().build();
     }
 }

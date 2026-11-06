@@ -1,11 +1,26 @@
-# Gradle: caché y archivos temporales
+# Gradle
 .gradle/
 
-# Resultados de compilación
+# Compilación
 build/
 
-# Archivos compilados Java
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# Java
 *.class
 
 # Logs
 *.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Configuraciones locales sensibles
+.env
+.env.*
+application-local.properties
+application-local.yml

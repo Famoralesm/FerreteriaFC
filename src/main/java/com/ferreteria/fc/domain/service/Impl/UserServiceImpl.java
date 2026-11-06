@@ -1,50 +1,155 @@
 package com.ferreteria.fc.domain.service.Impl;
 
+import com.ferreteria.fc.domain.dto.mapper.UserMapper;
+import com.ferreteria.fc.domain.dto.request.UserRequest;
+import com.ferreteria.fc.domain.dto.response.UserResponse;
+import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UserRepository;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.User;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class UserServiceImpl implements UserService {
 
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-
-        private final UserRepository userRepository;
-        private final PasswordEncoder passwordEncoder;
-
-    public UserServiceImpl(UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-        public User create(User user) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-            return userRepository.save(user);
-    }
+    @Override
+    public UserResponse create(UserRequest request) {
 
-        public List<User> getAll() {
-        return userRepository.findAll();
-    }
+        String email = request.getEmail().trim().toLowerCase();
 
-        public User getById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-    }
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "Ya existe un usuario registrado con ese correo"
+            );
+        }
 
-        public void delete(Long id) {
-        userRepository.deleteById(id);
+        if (request.getPassword() == null ||
+                request.getPassword().isBlank()) {
+            throw new IllegalArgumentException(
+                    "La contraseña es obligatoria"
+            );
+        }
+
+        User user = User.builder()
+                .name(request.getName().trim())
+                .email(email)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .active(request.getActive() == null ||
+                        request.getActive())
+                .build();
+
+        return UserMapper.toResponse(userRepository.save(user));
     }
 
     @Override
-    public User getByEmail(String email) {
+    public List<UserResponse> getAll() {
 
-        return userRepository.findByEmail(email)
+        return userRepository.findAll()
+                .stream()
+                .map(UserMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public UserResponse getById(Long id) {
+
+        return UserMapper.toResponse(findUser(id));
+    }
+
+    @Override
+    public UserResponse update(Long id, UserRequest request) {
+
+        User user = findUser(id);
+
+        String email = request.getEmail().trim().toLowerCase();
+
+        if (userRepository.existsByEmailAndIdNot(email, id)) {
+            throw new IllegalArgumentException(
+                    "El correo ya está siendo utilizado por otro usuario"
+            );
+        }
+
+        // No permitimos desactivar al último administrador activo.
+        if (user.getRole() == Role.ADMIN &&
+                user.isActive() &&
+                (!Boolean.TRUE.equals(request.getActive()) ||
+                        request.getRole() != Role.ADMIN)) {
+
+            long administrators =
+                    userRepository.countByRoleAndActiveTrue(Role.ADMIN);
+
+            if (administrators <= 1) {
+                throw new IllegalStateException(
+                        "No puedes desactivar o cambiar el perfil del último administrador activo"
+                );
+            }
+        }
+
+        user.setName(request.getName().trim());
+        user.setEmail(email);
+        user.setRole(request.getRole());
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
+        if (request.getPassword() != null &&
+                !request.getPassword().isBlank()) {
+
+            user.setPassword(
+                    passwordEncoder.encode(request.getPassword())
+            );
+        }
+
+        return UserMapper.toResponse(userRepository.save(user));
+    }
+
+    @Override
+    public void delete(Long id) {
+
+        User user = findUser(id);
+
+        if (user.getRole() == Role.ADMIN && user.isActive()) {
+
+            long administrators =
+                    userRepository.countByRoleAndActiveTrue(Role.ADMIN);
+
+            if (administrators <= 1) {
+                throw new IllegalStateException(
+                        "No puedes eliminar al último administrador activo"
+                );
+            }
+        }
+
+        userRepository.delete(user);
+    }
+
+    private User findUser(Long id) {
+
+        return userRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Usuario no encontrado: " + email));
+                        new IllegalArgumentException(
+                                "Usuario no encontrado: " + id
+                        )
+                );
     }
 }
