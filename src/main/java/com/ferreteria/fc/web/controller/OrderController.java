@@ -9,12 +9,15 @@ import com.ferreteria.fc.domain.service.OrderService;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.User;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,13 +36,29 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
             @RequestBody CreateOrderRequest request) {
-        System.out.println("ENTRO AL POST");
+
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("User name "+authentication.getName());
-        User user = userService.getByEmail(authentication.getName());
 
-        return ResponseEntity.ok(orderService.createOrder(request, user));
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Debes iniciar sesión para crear un pedido"
+            );
+        }
+
+        User user = userService.getOptionalByEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "No se pudo identificar al usuario autenticado"
+                ));
+
+        OrderResponse response = orderService.createOrder(request, user);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping

@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -89,10 +90,20 @@ public class UserServiceImpl implements UserService {
         }
 
         // No permitimos desactivar al último administrador activo.
-        if (user.getRole() == Role.ADMIN &&
-                user.isActive() &&
-                (!Boolean.TRUE.equals(request.getActive()) ||
-                        request.getRole() != Role.ADMIN)) {
+        Role newRole = request.getRole() != null
+                ? request.getRole()
+                : user.getRole();
+
+        boolean newActive = request.getActive() != null
+                ? request.getActive()
+                : user.isActive();
+
+        boolean isRemovingActiveAdmin =
+                user.getRole() == Role.ADMIN &&
+                        user.isActive() &&
+                        (newRole != Role.ADMIN || !newActive);
+
+        if (isRemovingActiveAdmin) {
 
             long administrators =
                     userRepository.countByRoleAndActiveTrue(Role.ADMIN);
@@ -104,13 +115,14 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+
+
+
         user.setName(request.getName().trim());
         user.setEmail(email);
         user.setRole(request.getRole());
+        user.setActive(newActive);
 
-        if (request.getActive() != null) {
-            user.setActive(request.getActive());
-        }
 
         if (request.getPassword() != null &&
                 !request.getPassword().isBlank()) {
@@ -151,5 +163,12 @@ public class UserServiceImpl implements UserService {
                                 "Usuario no encontrado: " + id
                         )
                 );
+    }
+
+    public User getByEmail(String email){
+        return userRepository.findByEmail(email);
+    }
+    public Optional<User> getOptionalByEmail(String nombreUsuario){
+        return userRepository.findOptionalByEmail(nombreUsuario);
     }
 }

@@ -1,5 +1,6 @@
 package com.ferreteria.fc.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -76,21 +77,15 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        /*
-                         * LOGIN
-                         */
-                        .requestMatchers("/api/auth/**")
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login")
                         .permitAll()
 
-                        /*
-                         * USUARIOS
-                         */
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me")
+                        .authenticated()
+
                         .requestMatchers("/api/users/**")
                         .hasRole("ADMIN")
 
-                        /*
-                         * PEDIDOS
-                         */
                         .requestMatchers(HttpMethod.GET, "/api/orders/**")
                         .hasAnyRole("ADMIN", "SELLER", "DELIVERY")
 
@@ -102,21 +97,32 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.DELETE, "/api/orders/**")
                         .hasRole("ADMIN")
-                        /*
-                         * COMUNAS Y CIUDADES
-                         */
+
                         .requestMatchers(HttpMethod.GET, "/api/ciudades/**")
                         .authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/api/comunas/**")
                         .authenticated()
 
-                        /*
-                         * TODO LO DEMÁS
-                         */
                         .anyRequest()
                         .authenticated()
+                )
 
+                .exceptionHandling(exception -> exception
+
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(
+                                    HttpServletResponse.SC_UNAUTHORIZED,
+                                    "No autenticado"
+                            );
+                        })
+
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.sendError(
+                                    HttpServletResponse.SC_FORBIDDEN,
+                                    "Acceso denegado"
+                            );
+                        })
                 )
 
                 .addFilterBefore(
