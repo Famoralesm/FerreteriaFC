@@ -3,9 +3,9 @@ spring:
     name: ferreteriaFC
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/ferreteria
-    username: felipe
-    password: felipe.platzi
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,5 +17,5 @@ spring:
         format_sql: true
 
 jwt:
-  secret: 4hJ3Lk29aQz8Mv9YxW7Nc2Pr5Tb8Ez6Fs1Ld9Qa0Rw3Hy6Uk
-  expiration: 86400000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
