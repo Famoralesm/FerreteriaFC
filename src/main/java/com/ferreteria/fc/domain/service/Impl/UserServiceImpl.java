@@ -275,4 +275,49 @@ public class UserServiceImpl implements UserService {
         }
 
     }
+
+    @Override
+    public UserResponse uploadUserAvatar(Long id, MultipartFile file) {
+
+        User user = findUser(id);
+
+        String previousPath = user.getAvatarPath();
+
+        StoredImage image = imageStorageService.store(
+                file,
+                ImageKind.USER_AVATAR
+        );
+
+        user.setAvatarPath(image.relativePath());
+        user.setAvatarSha256(image.sha256());
+        user.setAvatarSizeBytes(image.sizeBytes());
+        user.setAvatarWidth(image.width());
+        user.setAvatarHeight(image.height());
+
+        User saved = userRepository.saveAndFlush(user);
+
+        deleteUnusedAvatar(previousPath, saved.getAvatarPath());
+
+        return UserMapper.toResponse(saved);
+    }
+
+    @Override
+    public UserResponse deleteUserAvatar(Long id) {
+
+        User user = findUser(id);
+
+        String previousPath = user.getAvatarPath();
+
+        user.setAvatarPath(null);
+        user.setAvatarSha256(null);
+        user.setAvatarSizeBytes(null);
+        user.setAvatarWidth(null);
+        user.setAvatarHeight(null);
+
+        User saved = userRepository.saveAndFlush(user);
+
+        deleteUnusedAvatar(previousPath, null);
+
+        return UserMapper.toResponse(saved);
+    }
 }

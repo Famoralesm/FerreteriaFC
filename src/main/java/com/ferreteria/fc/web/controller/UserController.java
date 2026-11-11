@@ -3,7 +3,8 @@ package com.ferreteria.fc.web.controller;
 import com.ferreteria.fc.domain.dto.request.UserRequest;
 import com.ferreteria.fc.domain.dto.response.UserResponse;
 import com.ferreteria.fc.domain.service.UserService;
-
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -61,5 +62,26 @@ public class UserController {
         userService.delete(id);
 
         return ResponseEntity.noContent().build();
+    }
+    @PutMapping(
+            value = "/{id}/avatar",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<UserResponse> uploadAvatar(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(
+                userService.uploadUserAvatar(id, file)
+        );
+    }
+
+    @DeleteMapping("/{id}/avatar")
+    public ResponseEntity<UserResponse> deleteAvatar(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                userService.deleteUserAvatar(id)
+        );
     }
 }

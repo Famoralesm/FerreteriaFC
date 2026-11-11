@@ -33,4 +33,7 @@ public interface UserService {
     );
 
     UserResponse deleteMyAvatar(String email);
+
+    UserResponse uploadUserAvatar(Long id, MultipartFile file);
+    UserResponse deleteUserAvatar(Long id);
 }

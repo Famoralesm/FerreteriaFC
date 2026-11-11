@@ -218,8 +218,6 @@ public class ProductServiceImpl implements ProductService {
         productRepository.flush();
 
         deleteUnusedProductImage(previousPath, null);
-
-        productRepository.delete(product);
     }
 
     @Override
