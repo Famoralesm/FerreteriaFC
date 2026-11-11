@@ -24,3 +24,6 @@ Thumbs.db
 .env.*
 application-local.properties
 application-local.yml
+
+# Fotografías persistentes
+/storage/

@@ -93,4 +93,18 @@ public class Product {
         updatedAt = LocalDateTime.now();
 
     }
+    @Column(name = "image_path", length = 255)
+    private String imagePath;
+
+    @Column(name = "image_sha256", length = 64)
+    private String imageSha256;
+
+    @Column(name = "image_size_bytes")
+    private Long imageSizeBytes;
+
+    @Column(name = "image_width")
+    private Integer imageWidth;
+
+    @Column(name = "image_height")
+    private Integer imageHeight;
 }

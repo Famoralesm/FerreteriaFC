@@ -6,9 +6,13 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.repository.ProductRepository;
+import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
 import com.ferreteria.fc.persistence.entity.Product;
+import com.ferreteria.fc.domain.enums.ImageKind;
+import com.ferreteria.fc.domain.service.ImageStorageService.StoredImage;
 
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +24,14 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final ImageStorageService imageStorageService;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
-            ProductMapper productMapper
+            ProductMapper productMapper,
+            ImageStorageService imageStorageService
     ) {
+        this.imageStorageService= imageStorageService;
         this.productRepository = productRepository;
         this.productMapper = productMapper;
     }
@@ -204,6 +211,13 @@ public class ProductServiceImpl implements ProductService {
                                 "Producto no encontrado: " + id
                         )
                 );
+        String previousPath = product.getImagePath();
+
+        productRepository.delete(product);
+
+        productRepository.flush();
+
+        deleteUnusedProductImage(previousPath, null);
 
         productRepository.delete(product);
     }
@@ -220,5 +234,84 @@ public class ProductServiceImpl implements ProductService {
                         query,
                         query
                 );
+    }
+
+    @Override
+    public ProductResponse updateProductImage(
+            Long id,
+            MultipartFile file
+    ) {
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Producto no encontrado: " + id
+                        )
+                );
+
+        String previousPath = product.getImagePath();
+
+        StoredImage image = imageStorageService.store(
+                file,
+                ImageKind.PRODUCT_IMAGE
+        );
+
+        product.setImagePath(image.relativePath());
+        product.setImageSha256(image.sha256());
+        product.setImageSizeBytes(image.sizeBytes());
+        product.setImageWidth(image.width());
+        product.setImageHeight(image.height());
+
+        Product saved = productRepository.saveAndFlush(product);
+
+        deleteUnusedProductImage(previousPath, saved.getImagePath());
+
+        return productMapper.toResponse(saved);
+
+    }
+
+
+    @Override
+    public ProductResponse deleteProductImage(Long id) {
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Producto no encontrado: " + id
+                        )
+                );
+
+        String previousPath = product.getImagePath();
+
+        product.setImagePath(null);
+        product.setImageSha256(null);
+        product.setImageSizeBytes(null);
+        product.setImageWidth(null);
+        product.setImageHeight(null);
+
+        Product saved = productRepository.saveAndFlush(product);
+
+        deleteUnusedProductImage(previousPath, null);
+
+        return productMapper.toResponse(saved);
+
+    }
+
+
+    private void deleteUnusedProductImage(
+            String previousPath,
+            String currentPath
+    ) {
+
+        if (
+                previousPath != null &&
+                        !previousPath.equals(currentPath) &&
+                        productRepository.countByImagePath(previousPath) == 0
+        ) {
+
+            imageStorageService.delete(previousPath);
+
+        }
+
     }
 }

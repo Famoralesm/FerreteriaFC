@@ -28,6 +28,11 @@ public class ProductMapper {
                 .unit(product.getUnit())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
+                .imageUrl(
+                        product.getImagePath() == null
+                                ? null
+                                : "/api/media/" + product.getImagePath()
+                )
                 .build();
     }
 

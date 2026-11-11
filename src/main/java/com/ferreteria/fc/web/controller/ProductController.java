@@ -6,7 +6,8 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.service.ProductService;
-
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -100,5 +101,32 @@ public class ProductController {
                         .map(productMapper::toResponse)
                         .toList()
         );
+    }
+
+    @PutMapping(
+            value = "/{id}/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<ProductResponse> uploadImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+
+        return ResponseEntity.ok(
+                productService.updateProductImage(id, file)
+        );
+
+    }
+
+
+    @DeleteMapping("/{id}/image")
+    public ResponseEntity<ProductResponse> deleteImage(
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(
+                productService.deleteProductImage(id)
+        );
+
     }
 }

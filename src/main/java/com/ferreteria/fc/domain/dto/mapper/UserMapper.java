@@ -20,6 +20,12 @@ public class UserMapper {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .active(user.isActive())
+                .avatarUrl(
+                        user.getAvatarPath() == null
+                                ? null
+                                : "/api/media/" + user.getAvatarPath()
+                )
                 .build();
     }
+
 }

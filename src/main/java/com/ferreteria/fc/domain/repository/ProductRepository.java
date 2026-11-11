@@ -23,4 +23,6 @@ public interface ProductRepository
             String sku,
             String name
     );
+
+    long countByImagePath(String imagePath);
 }

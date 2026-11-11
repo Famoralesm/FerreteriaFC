@@ -6,7 +6,13 @@ import com.ferreteria.fc.domain.dto.response.LoginResponse;
 import com.ferreteria.fc.domain.dto.response.UserResponse;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.User;
+import com.ferreteria.fc.domain.dto.mapper.UserMapper;
+import com.ferreteria.fc.domain.dto.request.UpdateMyProfileRequest;
 
+import jakarta.validation.Valid;
+
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -50,6 +56,8 @@ public class AuthController {
                 .build();
     }
 
+  
+
     @GetMapping("/me")
     public UserResponse currentUser(Authentication authentication) {
 
@@ -61,12 +69,49 @@ public class AuthController {
             );
         }
 
-        return UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .active(user.isActive())
-                .build();
+        return UserMapper.toResponse(user);
+    }
+
+
+    @PutMapping("/me/profile")
+    public UserResponse updateMyProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateMyProfileRequest request
+    ) {
+
+        return userService.updateMyProfile(
+                authentication.getName(),
+                request
+        );
+
+    }
+
+
+    @PutMapping(
+            value = "/me/avatar",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public UserResponse uploadMyAvatar(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file
+    ) {
+
+        return userService.uploadMyAvatar(
+                authentication.getName(),
+                file
+        );
+
+    }
+
+
+    @DeleteMapping("/me/avatar")
+    public UserResponse deleteMyAvatar(
+            Authentication authentication
+    ) {
+
+        return userService.deleteMyAvatar(
+                authentication.getName()
+        );
+
     }
 }

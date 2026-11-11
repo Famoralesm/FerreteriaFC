@@ -28,8 +28,22 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
     @Builder.Default
     private boolean active = true;
+    @Column(name = "avatar_path", length = 255)
+    private String avatarPath;
 
+    @Column(name = "avatar_sha256", length = 64)
+    private String avatarSha256;
+
+    @Column(name = "avatar_size_bytes")
+    private Long avatarSizeBytes;
+
+    @Column(name = "avatar_width")
+    private Integer avatarWidth;
+
+    @Column(name = "avatar_height")
+    private Integer avatarHeight;
 
 }
