@@ -17,7 +17,6 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
-
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -38,8 +37,14 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class ImageStorageServiceImpl implements ImageStorageService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(ImageStorageServiceImpl.class);
 
     @Value("${media.storage-root:./storage/ferreteria/media}")
     private String storageRoot;
@@ -138,6 +143,14 @@ public class ImageStorageServiceImpl implements ImageStorageService {
             throw ex;
 
         } catch (Exception ex) {
+
+            log.error(
+                    "ERROR PROCESANDO IMAGEN | Tipo: {} | Content-Type: {} | Tamaño: {} bytes",
+                    kind,
+                    file.getContentType(),
+                    file.getSize(),
+                    ex
+            );
 
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
@@ -340,76 +353,88 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     }
 
 
-    private byte[] encodeWebp(
-            BufferedImage image
-    ) throws IOException {
+
+    private byte[] encodeWebp(BufferedImage image) throws IOException {
 
         Iterator<ImageWriter> writers =
                 ImageIO.getImageWritersByMIMEType("image/webp");
 
         if (!writers.hasNext()) {
-
             throw new IllegalStateException(
                     "No está disponible el codificador WebP. " +
                             "Revisa la dependencia webp-imageio."
             );
-
         }
 
         ImageWriter writer = writers.next();
 
-        try (
-                ByteArrayOutputStream bytes =
-                        new ByteArrayOutputStream()
-        ) {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
 
             ImageOutputStream output =
                     ImageIO.createImageOutputStream(bytes);
 
             if (output == null) {
-
                 throw new IOException(
                         "No fue posible crear el flujo de salida WebP"
                 );
-
             }
 
             try (output) {
 
+                // Asociar el escritor al flujo de salida.
                 writer.setOutput(output);
 
-                ImageWriteParam params =
+                ImageWriteParam writeParam =
                         writer.getDefaultWriteParam();
 
-                if (params.canWriteCompressed()) {
+                if (writeParam.canWriteCompressed()) {
 
-                    params.setCompressionMode(
+                    writeParam.setCompressionMode(
                             ImageWriteParam.MODE_EXPLICIT
                     );
 
-                    params.setCompressionQuality(0.82f);
+                    String[] compressionTypes =
+                            writeParam.getCompressionTypes();
 
+                    if (compressionTypes != null &&
+                            compressionTypes.length > 0) {
+
+                        String compressionType =
+                                java.util.Arrays.stream(compressionTypes)
+                                        .filter("Lossy"::equalsIgnoreCase)
+                                        .findFirst()
+                                        .orElse(compressionTypes[0]);
+
+                        writeParam.setCompressionType(compressionType);
+                        writeParam.setCompressionQuality(0.85f);
+                    }
                 }
 
+                // ESTA ES LA OPERACIÓN QUE FALTABA.
                 writer.write(
                         null,
                         new IIOImage(image, null, null),
-                        params
+                        writeParam
                 );
 
                 output.flush();
-
             }
 
-            return bytes.toByteArray();
+            byte[] result = bytes.toByteArray();
+
+            if (result.length == 0) {
+                throw new IOException(
+                        "El codificador WebP generó un archivo vacío"
+                );
+            }
+
+            return result;
 
         } finally {
-
             writer.dispose();
-
         }
-
     }
+
 
 
     private String sha256(

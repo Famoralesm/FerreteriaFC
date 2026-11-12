@@ -19,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 
 @Configuration
@@ -76,6 +76,10 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
 
                 .authorizeHttpRequests(auth -> auth
+                                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+
+
 
                         .requestMatchers(HttpMethod.POST, "/api/auth/login")
                         .permitAll()
@@ -117,6 +121,12 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
 
                         .authenticationEntryPoint((request, response, authException) -> {
+
+                            System.err.println(
+                                    "SECURITY 401 | URI: " + request.getRequestURI()
+                                            + " | MOTIVO: " + authException.getMessage()
+                            );
+
                             response.sendError(
                                     HttpServletResponse.SC_UNAUTHORIZED,
                                     "No autenticado"
