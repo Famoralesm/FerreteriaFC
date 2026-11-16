@@ -18,7 +18,7 @@ public class UpdateOrderRequest {
     @NotBlank
     private String customerName;
 
-    @NotBlank
+
     private String phone;
 
     @NotBlank

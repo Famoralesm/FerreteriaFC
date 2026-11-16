@@ -21,7 +21,7 @@ public class CreateOrderRequest {
     private LocalDate deliveryDate;
     @NotBlank
     private String customerName;
-    @NotBlank
+
     private String phone;
     @NotBlank
     private String address;
