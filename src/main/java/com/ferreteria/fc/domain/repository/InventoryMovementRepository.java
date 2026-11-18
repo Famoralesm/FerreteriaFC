@@ -1,4 +1,3 @@
-
 package com.ferreteria.fc.domain.repository;
 
 import com.ferreteria.fc.domain.enums.MovementType;
@@ -10,12 +9,15 @@ import java.util.List;
 public interface InventoryMovementRepository
         extends JpaRepository<InventoryMovement, Long> {
 
-    List<InventoryMovement> findByProductoIdOrderByFechaCreacionDesc(
-            Long productoId
+    List<InventoryMovement>
+    findByProductoIdAndSucursalIdOrderByFechaCreacionDesc(
+            Long productoId,
+            Long sucursalId
     );
 
-    boolean existsByProductoIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
+    boolean existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
             Long productoId,
+            Long sucursalId,
             MovementType tipoMovimiento,
             String tipoReferencia,
             Long referenciaId

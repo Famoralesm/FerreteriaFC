@@ -1,4 +1,3 @@
-
 package com.ferreteria.fc.domain.dto.request;
 
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +12,9 @@ public class InventoryMovementRequest {
 
     @NotNull
     private Long productoId;
+
+    // Solo se utilizará cuando el usuario sea ADMIN.
+    private Long sucursalId;
 
     @NotNull
     private Integer cantidad;

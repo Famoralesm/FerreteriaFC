@@ -4,12 +4,13 @@ package com.ferreteria.fc.domain.service.Impl;
 import com.ferreteria.fc.domain.dto.request.InventoryMovementRequest;
 import com.ferreteria.fc.domain.dto.response.InventoryMovementResponse;
 import com.ferreteria.fc.domain.enums.MovementType;
+import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.InventoryMovementRepository;
 import com.ferreteria.fc.domain.repository.ProductRepository;
+import com.ferreteria.fc.domain.repository.ProductStockRepository;
+import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.InventoryService;
-import com.ferreteria.fc.persistence.entity.InventoryMovement;
-import com.ferreteria.fc.persistence.entity.Product;
-import com.ferreteria.fc.persistence.entity.User;
+import com.ferreteria.fc.persistence.entity.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,13 +21,19 @@ import java.util.List;
 public class InventoryServiceImpl implements InventoryService {
 
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
+    private final StoreRepository storeRepository;
     private final InventoryMovementRepository movementRepository;
 
     public InventoryServiceImpl(
             ProductRepository productRepository,
+            ProductStockRepository productStockRepository,
+            StoreRepository storeRepository,
             InventoryMovementRepository movementRepository
     ) {
         this.productRepository = productRepository;
+        this.productStockRepository = productStockRepository;
+        this.storeRepository = storeRepository;
         this.movementRepository = movementRepository;
     }
 
@@ -38,10 +45,7 @@ public class InventoryServiceImpl implements InventoryService {
         validarCantidadPositiva(request.getCantidad());
 
         return registrarMovimiento(
-                request,
-                usuario,
-                MovementType.ENTRY,
-                request.getCantidad()
+                request, usuario, MovementType.ENTRY, request.getCantidad()
         );
     }
 
@@ -53,10 +57,7 @@ public class InventoryServiceImpl implements InventoryService {
         validarCantidadPositiva(request.getCantidad());
 
         return registrarMovimiento(
-                request,
-                usuario,
-                MovementType.EXIT,
-                -request.getCantidad()
+                request, usuario, MovementType.EXIT, -request.getCantidad()
         );
     }
 
@@ -74,9 +75,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         return registrarMovimiento(
-                request,
-                usuario,
-                MovementType.ADJUSTMENT,
+                request, usuario, MovementType.ADJUSTMENT,
                 request.getCantidad()
         );
     }
@@ -88,12 +87,15 @@ public class InventoryServiceImpl implements InventoryService {
             Integer diferencia
     ) {
         if (request.getProductoId() == null) {
-            throw new IllegalArgumentException(
-                    "Debe indicar el producto"
-            );
+            throw new IllegalArgumentException("Debe indicar el producto");
         }
 
+        Long sucursalId = resolverSucursalId(request, usuario);
 
+        Store sucursal = storeRepository.findById(sucursalId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Sucursal no encontrada: " + sucursalId
+                ));
 
         Product producto = productRepository
                 .findByIdForUpdate(request.getProductoId())
@@ -101,23 +103,33 @@ public class InventoryServiceImpl implements InventoryService {
                         "Producto no encontrado: " + request.getProductoId()
                 ));
 
-        validarReferenciaDuplicada(request, tipo);
-
         if (!Boolean.TRUE.equals(producto.getActive())) {
             throw new IllegalArgumentException(
                     "No se pueden registrar movimientos para un producto inactivo"
             );
         }
 
-        Integer stockAnterior = producto.getStock() != null
-                ? producto.getStock()
+        ProductStock productoStock = productStockRepository
+                .findByProductoAndSucursalForUpdate(
+                        producto.getId(), sucursalId
+                )
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El producto no tiene inventario inicializado en "
+                                + sucursal.getNombre()
+                ));
+
+        validarReferenciaDuplicada(request, tipo, sucursalId);
+
+        Integer stockAnterior = productoStock.getStock() != null
+                ? productoStock.getStock()
                 : 0;
 
         long resultado = (long) stockAnterior + diferencia;
 
         if (resultado < 0) {
             throw new IllegalArgumentException(
-                    "Stock insuficiente. Disponible: " + stockAnterior
+                    "Stock insuficiente en " + sucursal.getNombre()
+                            + ". Disponible: " + stockAnterior
             );
         }
 
@@ -129,11 +141,12 @@ public class InventoryServiceImpl implements InventoryService {
 
         Integer stockNuevo = (int) resultado;
 
-        producto.setStock(stockNuevo);
-        productRepository.save(producto);
+        productoStock.setStock(stockNuevo);
+        productStockRepository.save(productoStock);
 
         InventoryMovement movimiento = InventoryMovement.builder()
                 .producto(producto)
+                .sucursal(sucursal)
                 .tipoMovimiento(tipo)
                 .cantidad(Math.abs(diferencia))
                 .stockAnterior(stockAnterior)
@@ -144,9 +157,38 @@ public class InventoryServiceImpl implements InventoryService {
                 .usuario(usuario)
                 .build();
 
-        InventoryMovement guardado = movementRepository.save(movimiento);
+        return toResponse(movementRepository.save(movimiento));
+    }
 
-        return toResponse(guardado);
+    private Long resolverSucursalId(
+            InventoryMovementRequest request,
+            User usuario
+    ) {
+        if (usuario == null) {
+            throw new IllegalArgumentException(
+                    "No se pudo identificar al usuario autenticado"
+            );
+        }
+
+        // El administrador puede seleccionar la sucursal.
+        if (usuario.getRole() == Role.ADMIN) {
+            if (request.getSucursalId() == null) {
+                throw new IllegalArgumentException(
+                        "El administrador debe indicar la sucursal"
+                );
+            }
+
+            return request.getSucursalId();
+        }
+
+        // Los demás roles siempre operan en su sucursal asignada.
+        if (usuario.getSucursal() == null) {
+            throw new IllegalArgumentException(
+                    "El usuario no tiene una sucursal asignada"
+            );
+        }
+
+        return usuario.getSucursal().getId();
     }
 
     private void validarCantidadPositiva(Integer cantidad) {
@@ -159,7 +201,8 @@ public class InventoryServiceImpl implements InventoryService {
 
     private void validarReferenciaDuplicada(
             InventoryMovementRequest request,
-            MovementType tipo
+            MovementType tipo,
+            Long sucursalId
     ) {
         if (request.getTipoReferencia() == null
                 || request.getTipoReferencia().isBlank()
@@ -168,8 +211,9 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         boolean existe = movementRepository
-                .existsByProductoIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
+                .existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
                         request.getProductoId(),
+                        sucursalId,
                         tipo,
                         request.getTipoReferencia(),
                         request.getReferenciaId()
@@ -184,16 +228,28 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryMovementResponse> getMovements(Long productoId) {
-
+    public List<InventoryMovementResponse> getMovements(
+            Long productoId,
+            Long sucursalId,
+            User usuario
+    ) {
         if (!productRepository.existsById(productoId)) {
             throw new IllegalArgumentException(
                     "Producto no encontrado: " + productoId
             );
         }
 
+        Long sucursalAutorizada = resolverSucursalId(
+                InventoryMovementRequest.builder()
+                        .sucursalId(sucursalId)
+                        .build(),
+                usuario
+        );
+
         return movementRepository
-                .findByProductoIdOrderByFechaCreacionDesc(productoId)
+                .findByProductoIdAndSucursalIdOrderByFechaCreacionDesc(
+                        productoId, sucursalAutorizada
+                )
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -203,12 +259,15 @@ public class InventoryServiceImpl implements InventoryService {
             InventoryMovement movimiento
     ) {
         Product producto = movimiento.getProducto();
+        Store sucursal = movimiento.getSucursal();
 
         return InventoryMovementResponse.builder()
                 .id(movimiento.getId())
                 .productoId(producto.getId())
                 .sku(producto.getSku())
                 .nombreProducto(producto.getName())
+                .sucursalId(sucursal.getId())
+                .nombreSucursal(sucursal.getNombre())
                 .tipoMovimiento(movimiento.getTipoMovimiento())
                 .cantidad(movimiento.getCantidad())
                 .stockAnterior(movimiento.getStockAnterior())

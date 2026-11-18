@@ -1,4 +1,3 @@
-
 package com.ferreteria.fc.domain.service;
 
 import com.ferreteria.fc.domain.dto.request.InventoryMovementRequest;
@@ -24,5 +23,9 @@ public interface InventoryService {
             User usuario
     );
 
-    List<InventoryMovementResponse> getMovements(Long productoId);
+    List<InventoryMovementResponse> getMovements(
+            Long productoId,
+            Long sucursalId,
+            User usuario
+    );
 }

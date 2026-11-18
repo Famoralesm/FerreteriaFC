@@ -38,4 +38,8 @@ public class InventoryMovementResponse {
     private String usuario;
 
     private LocalDateTime fechaCreacion;
+
+    private Long sucursalId;
+
+    private String nombreSucursal;
 }
