@@ -6,6 +6,8 @@ import com.ferreteria.fc.domain.dto.response.InventoryMovementResponse;
 import com.ferreteria.fc.domain.enums.MovementType;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.InventoryMovementRepository;
+import com.ferreteria.fc.domain.repository.InventoryCountRepository;
+import com.ferreteria.fc.domain.enums.InventoryCountStatus;
 import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.ProductStockRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
@@ -24,17 +26,20 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductStockRepository productStockRepository;
     private final StoreRepository storeRepository;
     private final InventoryMovementRepository movementRepository;
+    private final InventoryCountRepository inventoryCountRepository;
 
     public InventoryServiceImpl(
             ProductRepository productRepository,
             ProductStockRepository productStockRepository,
             StoreRepository storeRepository,
-            InventoryMovementRepository movementRepository
+            InventoryMovementRepository movementRepository,
+            InventoryCountRepository inventoryCountRepository
     ) {
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
         this.storeRepository = storeRepository;
         this.movementRepository = movementRepository;
+        this.inventoryCountRepository = inventoryCountRepository;
     }
 
     @Override
@@ -91,6 +96,9 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         Long sucursalId = resolverSucursalId(request, usuario);
+        if (inventoryCountRepository.existsBySucursalIdAndStatus(sucursalId, InventoryCountStatus.IN_PROGRESS)) {
+            throw new IllegalStateException("No se permiten movimientos mientras exista un inventario físico en curso");
+        }
 
         Store sucursal = storeRepository.findById(sucursalId)
                 .orElseThrow(() -> new IllegalArgumentException(
