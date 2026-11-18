@@ -31,37 +31,35 @@ public class InventoryMovement {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    private Product producto;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private MovementType movementType;
+    @Column(name = "movement_type", nullable = false, length = 20)
+    private MovementType tipoMovimiento;
 
-    // Cantidad absoluta del movimiento.
     @Column(nullable = false)
-    private Integer quantity;
+    private Integer cantidad;
 
     @Column(name = "stock_before", nullable = false)
-    private Integer stockBefore;
+    private Integer stockAnterior;
 
     @Column(name = "stock_after", nullable = false)
-    private Integer stockAfter;
+    private Integer stockNuevo;
 
     @Column(length = 500)
-    private String reason;
+    private String motivo;
 
-    // Ejemplos: ORDER, PURCHASE, INVENTORY_COUNT, MANUAL
     @Column(name = "reference_type", length = 40)
-    private String referenceType;
+    private String tipoReferencia;
 
     @Column(name = "reference_id")
-    private Long referenceId;
+    private Long referenciaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    private User createdBy;
+    private User usuario;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime fechaCreacion;
 }
