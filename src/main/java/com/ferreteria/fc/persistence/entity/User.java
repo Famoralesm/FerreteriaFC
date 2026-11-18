@@ -46,4 +46,8 @@ public class User {
     @Column(name = "avatar_height")
     private Integer avatarHeight;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store sucursal;
+
 }
