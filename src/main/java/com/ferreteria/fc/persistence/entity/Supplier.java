@@ -16,7 +16,7 @@ public class Supplier {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 12, unique = true)
+    @Column(length = 12)
     private String rut;
 
     @Column(nullable = false, length = 200)
