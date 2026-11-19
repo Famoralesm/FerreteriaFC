@@ -32,7 +32,7 @@ public class OrderItem {
 
     private BigDecimal totalPrice;
 
-    @Column(name = "wholesale_applied", nullable = false)
+    @Column(name = "wholesale_applied")
     @Builder.Default
     private Boolean wholesaleApplied = false;
 
