@@ -58,6 +58,8 @@ public class ProductServiceImpl implements ProductService {
             );
         }
 
+        validarConfiguracionMayorista(request.getWholesalePrice(), request.getWholesaleMinQuantity());
+
         Product product = Product.builder()
                 .sku(request.getSku())
                 .name(request.getName())
@@ -140,8 +142,13 @@ public class ProductServiceImpl implements ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
-        product.setWholesalePrice(request.getWholesalePrice());
-        product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
+        BigDecimal precioMayorista = request.getWholesalePrice() != null
+                ? request.getWholesalePrice() : product.getWholesalePrice();
+        Integer cantidadMayorista = request.getWholesaleMinQuantity() != null
+                ? request.getWholesaleMinQuantity() : product.getWholesaleMinQuantity();
+        validarConfiguracionMayorista(precioMayorista, cantidadMayorista);
+        product.setWholesalePrice(precioMayorista);
+        product.setWholesaleMinQuantity(cantidadMayorista);
         product.setActive(request.getActive());
         product.setCategory(request.getCategory());
         product.setBrand(request.getBrand());
@@ -319,6 +326,20 @@ public class ProductServiceImpl implements ProductService {
 
     }
 
+
+    private void validarConfiguracionMayorista(
+            java.math.BigDecimal precioMayorista,
+            Integer cantidadMayorista
+    ) {
+        if ((precioMayorista == null) != (cantidadMayorista == null)) {
+            throw new IllegalArgumentException(
+                    "Debe informar conjuntamente el precio mayorista y la cantidad mínima"
+            );
+        }
+        if (cantidadMayorista != null && cantidadMayorista < 1) {
+            throw new IllegalArgumentException("La cantidad mínima mayorista debe ser mayor que cero");
+        }
+    }
 
     private void deleteUnusedProductImage(
             String previousPath,
