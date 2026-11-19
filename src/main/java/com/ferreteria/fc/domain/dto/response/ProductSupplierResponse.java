@@ -1,27 +1,17 @@
 package com.ferreteria.fc.domain.dto.response;
-import com.ferreteria.fc.persistence.entity.Product;
-import com.ferreteria.fc.persistence.entity.Supplier;
-import lombok.Builder;
-import lombok.Data;
 
+import lombok.*;
 import java.math.BigDecimal;
 
-@Data
-@Builder
+@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class ProductSupplierResponse {
-
     private Long id;
-
-    private Long supplierId;
-    private Product product;
-
-    private Supplier supplier;
-
-    private String supplierPhone;
-
-    private String supplierEmail;
-
-    private BigDecimal purchasePrice;
-
-    private Boolean selected;
+    private Long productoId;
+    private String nombreProducto;
+    private Long proveedorId;
+    private String nombreProveedor;
+    private String telefonoProveedor;
+    private String emailProveedor;
+    private BigDecimal precioCompra;
+    private Boolean seleccionado;
 }
