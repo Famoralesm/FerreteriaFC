@@ -6,9 +6,13 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.repository.ProductRepository;
+import com.ferreteria.fc.domain.repository.ProductStockRepository;
+import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
 import com.ferreteria.fc.persistence.entity.Product;
+import com.ferreteria.fc.persistence.entity.ProductStock;
+import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.domain.enums.ImageKind;
 import com.ferreteria.fc.domain.service.ImageStorageService.StoredImage;
 
@@ -23,15 +27,21 @@ import java.util.List;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
+    private final StoreRepository storeRepository;
     private final ProductMapper productMapper;
     private final ImageStorageService imageStorageService;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
+            ProductStockRepository productStockRepository,
+            StoreRepository storeRepository,
             ProductMapper productMapper,
             ImageStorageService imageStorageService
     ) {
         this.imageStorageService= imageStorageService;
+        this.productStockRepository = productStockRepository;
+        this.storeRepository = storeRepository;
         this.productRepository = productRepository;
         this.productMapper = productMapper;
     }
@@ -53,7 +63,9 @@ public class ProductServiceImpl implements ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
-                .stock(request.getStock())
+                .wholesalePrice(request.getWholesalePrice())
+                .wholesaleMinQuantity(request.getWholesaleMinQuantity())
+                .stock(0)
                 .active(
                         request.getActive() != null
                                 ? request.getActive()
@@ -65,6 +77,12 @@ public class ProductServiceImpl implements ProductService {
                 .build();
 
         Product saved = productRepository.save(product);
+
+        Store sucursalInicial = storeRepository.findByCodigo("SAN_FRANCISCO")
+                .orElseThrow(() -> new IllegalStateException("No existe la sucursal SAN_FRANCISCO"));
+
+        productStockRepository.save(ProductStock.builder()
+                .producto(saved).sucursal(sucursalInicial).stock(0).stockMinimo(0).build());
 
         return productMapper.toResponse(saved);
     }
@@ -122,7 +140,8 @@ public class ProductServiceImpl implements ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
-        product.setStock(request.getStock());
+        product.setWholesalePrice(request.getWholesalePrice());
+        product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
         product.setActive(request.getActive());
         product.setCategory(request.getCategory());
         product.setBrand(request.getBrand());
@@ -177,9 +196,14 @@ public class ProductServiceImpl implements ProductService {
             product.setPrice(request.getPrice());
         }
 
-        if (request.getStock() != null) {
-            product.setStock(request.getStock());
+        if (request.getWholesalePrice() != null) {
+            product.setWholesalePrice(request.getWholesalePrice());
         }
+
+        if (request.getWholesaleMinQuantity() != null) {
+            product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
+        }
+
 
         if (request.getActive() != null) {
             product.setActive(request.getActive());

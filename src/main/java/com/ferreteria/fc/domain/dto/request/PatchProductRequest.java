@@ -22,6 +22,12 @@ public class PatchProductRequest {
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal price;
 
+    @DecimalMin(value = "0.0", inclusive = true)
+    private BigDecimal wholesalePrice;
+
+    @Min(1)
+    private Integer wholesaleMinQuantity;
+
     @Min(0)
     private Integer stock;
 

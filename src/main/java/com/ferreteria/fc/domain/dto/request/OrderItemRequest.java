@@ -2,7 +2,6 @@ package com.ferreteria.fc.domain.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderItemRequest {
-    @NotBlank
+    private Long productId;
     private String productName;
     @Min(1)
     private Integer quantity;

@@ -42,7 +42,7 @@ public class ProductSupplier {
     )
     private BigDecimal purchasePrice;
 
-    @Column(nullable = false)
     @Builder.Default
+    @Column(nullable = false)
     private Boolean selected = false;
 }

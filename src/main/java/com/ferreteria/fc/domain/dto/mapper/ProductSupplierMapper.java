@@ -3,33 +3,25 @@ package com.ferreteria.fc.domain.dto.mapper;
 import com.ferreteria.fc.domain.dto.response.ProductSupplierResponse;
 import com.ferreteria.fc.persistence.entity.ProductSupplier;
 import org.springframework.stereotype.Component;
-
 import java.util.List;
 
 @Component
 public class ProductSupplierMapper {
-
-    public ProductSupplierResponse toResponse(ProductSupplier productSupplier) {
-
-        if (productSupplier == null) {
-            return null;
-        }
-
+    public ProductSupplierResponse toResponse(ProductSupplier ps) {
+        if (ps == null) return null;
         return ProductSupplierResponse.builder()
-                .id(productSupplier.getId())
-                .product(productSupplier.getProduct())
-                .supplier(productSupplier.getSupplier())
-                .purchasePrice(productSupplier.getPurchasePrice())
-                .selected(productSupplier.getSelected())
+                .id(ps.getId())
+                .productoId(ps.getProduct().getId())
+                .nombreProducto(ps.getProduct().getName())
+                .proveedorId(ps.getSupplier().getId())
+                .nombreProveedor(ps.getSupplier().getNombre())
+                .telefonoProveedor(ps.getSupplier().getTelefono())
+                .emailProveedor(ps.getSupplier().getEmail())
+                .precioCompra(ps.getPurchasePrice())
+                .seleccionado(ps.getSelected())
                 .build();
     }
-
-    public List<ProductSupplierResponse> toListResponse(List<ProductSupplier> productSupplier) {
-
-        return productSupplier.stream()
-                .map(this::toResponse)
-                .toList();
+    public List<ProductSupplierResponse> toListResponse(List<ProductSupplier> list) {
+        return list.stream().map(this::toResponse).toList();
     }
-
-
 }

@@ -22,6 +22,10 @@ public class ProductResponse {
 
     private BigDecimal price;
 
+    private BigDecimal wholesalePrice;
+
+    private Integer wholesaleMinQuantity;
+
     private Integer stock;
 
     private Boolean active;

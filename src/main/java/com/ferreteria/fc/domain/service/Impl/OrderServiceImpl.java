@@ -2,6 +2,7 @@ package com.ferreteria.fc.domain.service.Impl;
 
 import com.ferreteria.fc.domain.dto.mapper.OrderMapper;
 import com.ferreteria.fc.domain.dto.request.CreateOrderRequest;
+import com.ferreteria.fc.domain.dto.request.OrderItemRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.UpdatePatchOrderRequest;
 import com.ferreteria.fc.domain.dto.response.OrderResponse;
@@ -9,9 +10,11 @@ import com.ferreteria.fc.domain.dto.response.OrderSummaryResponse;
 import com.ferreteria.fc.domain.dto.utils.WazeUtils;
 import com.ferreteria.fc.domain.enums.OrderStatus;
 import com.ferreteria.fc.domain.repository.OrderRepository;
+import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.service.OrderService;
 import com.ferreteria.fc.persistence.entity.Order;
 import com.ferreteria.fc.persistence.entity.OrderItem;
+import com.ferreteria.fc.persistence.entity.Product;
 import com.ferreteria.fc.persistence.entity.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,20 +26,23 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
 
-    public OrderServiceImpl(OrderRepository orderRepository, OrderMapper orderMapper) {
+    public OrderServiceImpl(OrderRepository orderRepository,
+                            ProductRepository productRepository,
+                            OrderMapper orderMapper) {
         this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
         this.orderMapper = orderMapper;
     }
 
     @Override
-    @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, User user) {
-
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setCustomerName(request.getCustomerName());
@@ -49,44 +55,78 @@ public class OrderServiceImpl implements OrderService {
         order.setCreatedBy(user);
         order.setDeliveryDate(request.getDeliveryDate());
 
-
-        List<OrderItem> items = request.getItems().stream().map(i -> {
-            OrderItem item = new OrderItem();
-            item.setProductName(i.getProductName());
-            item.setQuantity(i.getQuantity());
-            item.setUnitPrice(i.getUnitPrice());
-            item.setTotalPrice(
-                    i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
-            );
-            item.setOrder(order);
-            return item;
-        }).toList();
+        List<OrderItem> items = request.getItems().stream()
+                .map(i -> buildItem(i, order)).toList();
 
         order.setItems(items);
-        order.setTotalAmount(
-                items.stream()
-                        .map(OrderItem::getTotalPrice)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        );
-
+        recalculateTotal(order);
         order.setWazeLink(WazeUtils.generateLink(order.getAddress()));
-
-         orderRepository.save(order);
-        return orderMapper.toResponse(order);
+        return orderMapper.toResponse(orderRepository.save(order));
     }
+
+    private OrderItem buildItem(OrderItemRequest request, Order order) {
+        if (request.getQuantity() == null || request.getQuantity() < 1)
+            throw new IllegalArgumentException("La cantidad del producto debe ser mayor que cero");
+
+        Product product = null;
+        String productName = request.getProductName();
+        BigDecimal unitPrice = request.getUnitPrice();
+        boolean wholesale = false;
+        String pricingType = "UNIT";
+
+        if (request.getProductId() != null) {
+            product = productRepository.findById(request.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado: " + request.getProductId()));
+            if (!Boolean.TRUE.equals(product.getActive()))
+                throw new IllegalArgumentException("El producto está inactivo: " + product.getName());
+
+            productName = product.getName();
+            unitPrice = product.getPrice();
+
+            if (product.getWholesalePrice() != null
+                    && product.getWholesaleMinQuantity() != null
+                    && request.getQuantity() >= product.getWholesaleMinQuantity()) {
+                unitPrice = product.getWholesalePrice();
+                wholesale = true;
+                pricingType = "WHOLESALE";
+            }
+        }
+
+        if (productName == null || productName.isBlank())
+            throw new IllegalArgumentException("Debe indicar un producto o productoId");
+        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalArgumentException("No existe un precio válido para el producto " + productName);
+
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProduct(product);
+        item.setProductName(productName);
+        item.setQuantity(request.getQuantity());
+        item.setUnitPrice(unitPrice);
+        item.setTotalPrice(unitPrice.multiply(BigDecimal.valueOf(request.getQuantity())));
+        item.setWholesaleApplied(wholesale);
+        item.setPricingType(pricingType);
+        return item;
+    }
+
+    private void recalculateTotal(Order order) {
+        order.setTotalAmount(order.getItems().stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
     public List<OrderResponse> getAll() {
         return orderMapper.toListResponse(orderRepository.findAll());
     }
 
     public OrderResponse getById(Long id) {
-        return orderMapper.toResponse(orderRepository.getReferenceById(id));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
+        return orderMapper.toResponse(order);
     }
 
-
     @Override
-    @Transactional
     public OrderResponse updateOrder(Long id, UpdateOrderRequest request) {
-
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
 
@@ -95,96 +135,43 @@ public class OrderServiceImpl implements OrderService {
         order.setAddress(request.getAddress());
         order.setDeliveryDate(request.getDeliveryDate());
         order.setPaymentMethod(request.getPaymentMethod());
-        if (request.getStatus() != null &&
-                request.getStatus() != order.getStatus()) {
 
+        if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
         }
         order.setNotes(request.getNotes());
-
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
 
         if (request.getItems() != null) {
-
             order.getItems().clear();
-
             List<OrderItem> items = request.getItems().stream()
-                    .map(item -> {
-
-                        OrderItem orderItem = new OrderItem();
-
-                        orderItem.setProductName(item.getProductName());
-                        orderItem.setQuantity(item.getQuantity());
-                        orderItem.setUnitPrice(item.getUnitPrice());
-
-                        orderItem.setTotalPrice(
-                                item.getUnitPrice()
-                                        .multiply(
-                                                BigDecimal.valueOf(item.getQuantity())
-                                        )
-                        );
-
-                        orderItem.setOrder(order);
-
-                        return orderItem;
-
-                    })
-                    .toList();
-
+                    .map(item -> buildItem(item, order)).toList();
             order.getItems().addAll(items);
-
-            order.setTotalAmount(
-                    items.stream()
-                            .map(OrderItem::getTotalPrice)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add)
-            );
+            recalculateTotal(order);
         }
-
         return orderMapper.toResponse(orderRepository.save(order));
     }
 
-    @Transactional
     public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request) {
-
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
-        if(request.getDeliveryDate() != null){
-            order.setDeliveryDate(request.getDeliveryDate());
-        }
-
-        if(request.getCustomerName() != null){
-            order.setCustomerName(request.getCustomerName());
-        }
-
-        if(request.getPhone() != null){
-            order.setPhone(request.getPhone());
-        }
-
-        if(request.getAddress() != null){
+        if (request.getDeliveryDate() != null) order.setDeliveryDate(request.getDeliveryDate());
+        if (request.getCustomerName() != null) order.setCustomerName(request.getCustomerName());
+        if (request.getPhone() != null) order.setPhone(request.getPhone());
+        if (request.getAddress() != null) {
             order.setAddress(request.getAddress());
             order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
         }
+        if (request.getPaymentMethod() != null) order.setPaymentMethod(request.getPaymentMethod());
+        if (request.getNotes() != null) order.setNotes(request.getNotes());
 
-        if(request.getPaymentMethod() != null){
-            order.setPaymentMethod(request.getPaymentMethod());
-        }
-
-        if(request.getNotes() != null){
-            order.setNotes(request.getNotes());
-        }
-
-        if (request.getStatus() != null &&
-                request.getStatus() != order.getStatus()) {
-
+        if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
         }
-
-        Order saved = orderRepository.save(order);
-
-        return orderMapper.toResponse(saved);
+        return orderMapper.toResponse(orderRepository.save(order));
     }
 
     public void delete(Long id) {
@@ -193,13 +180,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderSummaryResponse> findLatestOrders() {
-        return orderRepository.findLatestOrders(PageRequest.of(0,10));
+        return orderRepository.findLatestOrders(PageRequest.of(0, 10));
     }
 
     @Override
     public List<OrderSummaryResponse> findAllSummary() {
         return orderRepository.findAllOrders();
     }
-
-
 }

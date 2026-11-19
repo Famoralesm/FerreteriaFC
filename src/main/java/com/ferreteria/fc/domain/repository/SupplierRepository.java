@@ -9,4 +9,6 @@ public interface SupplierRepository
         extends JpaRepository<Supplier, Long> {
 
     List<Supplier> findAllByOrderByNombreAsc();
+    boolean existsByRut(String rut);
+    java.util.Optional<Supplier> findByRut(String rut);
 }

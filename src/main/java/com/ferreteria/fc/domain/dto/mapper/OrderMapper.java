@@ -38,6 +38,7 @@ public class OrderMapper {
                 .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .statusChangedAt(order.getStatusChangedAt())
 
                 .createdBy(toUserResponse(order.getCreatedBy()))
 
@@ -77,10 +78,13 @@ public class OrderMapper {
                 .map(item -> OrderItemResponse.builder()
 
                         .id(item.getId())
+                        .productId(item.getProduct() == null ? null : item.getProduct().getId())
                         .productName(item.getProductName())
                         .quantity(item.getQuantity())
                         .unitPrice(item.getUnitPrice())
                         .totalPrice(item.getTotalPrice())
+                        .wholesaleApplied(item.getWholesaleApplied())
+                        .pricingType(item.getPricingType())
 
                         .build())
 
