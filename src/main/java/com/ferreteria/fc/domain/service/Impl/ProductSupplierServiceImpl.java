@@ -10,69 +10,53 @@ import com.ferreteria.fc.persistence.entity.ProductSupplier;
 import com.ferreteria.fc.persistence.entity.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
 @Transactional
 public class ProductSupplierServiceImpl implements ProductSupplierService {
-
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
     private final ProductSupplierRepository productSupplierRepository;
 
-    public ProductSupplierServiceImpl(ProductRepository productRepository, SupplierRepository supplierRepository, ProductSupplierRepository productSupplierRepository) {
+    public ProductSupplierServiceImpl(ProductRepository productRepository,
+            SupplierRepository supplierRepository, ProductSupplierRepository productSupplierRepository) {
         this.productRepository = productRepository;
         this.supplierRepository = supplierRepository;
         this.productSupplierRepository = productSupplierRepository;
     }
 
-
-    @Transactional
-    public ProductSupplier addSupplierToProduct(
-            Long productId,
-            ProductSupplierRequest request) {
-
+    @Override
+    public ProductSupplier addSupplierToProduct(Long productId, ProductSupplierRequest request) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() ->
-                        new RuntimeException("Producto no encontrado"));
-
+                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
-                .orElseThrow(() ->
-                        new RuntimeException("Proveedor no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado"));
 
-        productSupplierRepository
-                .findByProductIdAndSupplierId(
-                        productId,
-                        request.getSupplierId()
-                )
-                .ifPresent(existing -> {
-                    throw new RuntimeException(
-                            "El proveedor ya está asociado al producto"
-                    );
-                });
+        if (productSupplierRepository.findByProductIdAndSupplierId(productId, request.getSupplierId()).isPresent())
+            throw new IllegalStateException("El proveedor ya está asociado al producto");
 
-        if (Boolean.TRUE.equals(request.getSelected())) {
+        List<ProductSupplier> current = productSupplierRepository.findByProductId(productId);
+        boolean selected = Boolean.TRUE.equals(request.getSelected()) || current.isEmpty();
+        if (selected) current.forEach(ps -> ps.setSelected(false));
+        if (selected) productSupplierRepository.saveAll(current);
 
-            List<ProductSupplier> suppliers =
-                    productSupplierRepository.findByProductId(productId);
-
-            suppliers.forEach(ps -> ps.setSelected(false));
-
-            productSupplierRepository.saveAll(suppliers);
-        }
-
-        ProductSupplier productSupplier =
-                ProductSupplier.builder()
-                        .product(product)
-                        .supplier(supplier)
-                        .purchasePrice(request.getPurchasePrice())
-                        .selected(
-                                Boolean.TRUE.equals(request.getSelected())
-                        )
-                        .build();
-
-        return productSupplierRepository.save(productSupplier);
+        return productSupplierRepository.save(ProductSupplier.builder()
+                .product(product).supplier(supplier).purchasePrice(request.getPurchasePrice())
+                .selected(selected).build());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductSupplier> getSuppliersByProduct(Long productId) {
+        if (!productRepository.existsById(productId)) throw new IllegalArgumentException("Producto no encontrado");
+        return productSupplierRepository.findByProductIdOrderByPurchasePriceAsc(productId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductSupplier> getProductsBySupplier(Long supplierId) {
+        if (!supplierRepository.existsById(supplierId)) throw new IllegalArgumentException("Proveedor no encontrado");
+        return productSupplierRepository.findBySupplierIdOrderByPurchasePriceAsc(supplierId);
+    }
 }
