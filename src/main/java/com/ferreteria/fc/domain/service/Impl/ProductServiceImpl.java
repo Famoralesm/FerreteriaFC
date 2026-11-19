@@ -12,6 +12,7 @@ import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
 import com.ferreteria.fc.persistence.entity.Product;
 import com.ferreteria.fc.persistence.entity.ProductStock;
+import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.domain.enums.ImageKind;
 import com.ferreteria.fc.domain.service.ImageStorageService.StoredImage;
 
@@ -77,10 +78,11 @@ public class ProductServiceImpl implements ProductService {
 
         Product saved = productRepository.save(product);
 
-        storeRepository.findByActivaTrueOrderByNombreAsc().forEach(sucursal ->
-                productStockRepository.save(ProductStock.builder()
-                        .producto(saved).sucursal(sucursal).stock(0).stockMinimo(0).build())
-        );
+        Store sucursalInicial = storeRepository.findByCodigo("SAN_FRANCISCO")
+                .orElseThrow(() -> new IllegalStateException("No existe la sucursal SAN_FRANCISCO"));
+
+        productStockRepository.save(ProductStock.builder()
+                .producto(saved).sucursal(sucursalInicial).stock(0).stockMinimo(0).build());
 
         return productMapper.toResponse(saved);
     }
