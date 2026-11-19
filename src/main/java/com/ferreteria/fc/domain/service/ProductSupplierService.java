@@ -2,10 +2,10 @@ package com.ferreteria.fc.domain.service;
 
 import com.ferreteria.fc.domain.dto.request.ProductSupplierRequest;
 import com.ferreteria.fc.persistence.entity.ProductSupplier;
+import java.util.List;
 
 public interface ProductSupplierService {
-
-    public ProductSupplier addSupplierToProduct(
-            Long productId,
-            ProductSupplierRequest request);
+    ProductSupplier addSupplierToProduct(Long productId, ProductSupplierRequest request);
+    List<ProductSupplier> getSuppliersByProduct(Long productId);
+    List<ProductSupplier> getProductsBySupplier(Long supplierId);
 }
