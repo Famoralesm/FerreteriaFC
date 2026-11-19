@@ -106,7 +106,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/inventory-counts/**")
                         .hasAnyRole("ADMIN", "SELLER")
 
-                        .requestMatchers("/api/inventory/**", "/api/product-stocks/**", "/api/stores/**")
+                        .requestMatchers("/api/inventory/**", "/api/product-stocks/**", "/api/stores/**", "/api/suppliers/**")
                         .hasAnyRole("ADMIN", "SELLER")
 
                         .requestMatchers(HttpMethod.GET, "/api/ciudades/**")
