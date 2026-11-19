@@ -73,7 +73,7 @@ public class SupplierServiceImpl implements SupplierService {
     @Override
     @Transactional(readOnly = true)
     public Supplier get(Long id) {
-        return supplierRepository.findById(id)
+        return supplierRepository.findWithLocationById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado: " + id));
     }
 
