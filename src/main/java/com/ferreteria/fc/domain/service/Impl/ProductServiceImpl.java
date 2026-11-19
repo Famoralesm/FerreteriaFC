@@ -62,6 +62,8 @@ public class ProductServiceImpl implements ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
+                .wholesalePrice(request.getWholesalePrice())
+                .wholesaleMinQuantity(request.getWholesaleMinQuantity())
                 .stock(0)
                 .active(
                         request.getActive() != null
@@ -136,6 +138,8 @@ public class ProductServiceImpl implements ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
+        product.setWholesalePrice(request.getWholesalePrice());
+        product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
         product.setActive(request.getActive());
         product.setCategory(request.getCategory());
         product.setBrand(request.getBrand());
@@ -188,6 +192,14 @@ public class ProductServiceImpl implements ProductService {
 
         if (request.getPrice() != null) {
             product.setPrice(request.getPrice());
+        }
+
+        if (request.getWholesalePrice() != null) {
+            product.setWholesalePrice(request.getWholesalePrice());
+        }
+
+        if (request.getWholesaleMinQuantity() != null) {
+            product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
         }
 
 
