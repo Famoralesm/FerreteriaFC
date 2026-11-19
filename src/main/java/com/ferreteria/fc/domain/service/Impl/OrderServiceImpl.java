@@ -92,6 +92,8 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        if (productName == null || productName.isBlank())
+            throw new IllegalArgumentException("Debe indicar un producto o productoId");
         if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) < 0)
             throw new IllegalArgumentException("No existe un precio válido para el producto " + productName);
 
