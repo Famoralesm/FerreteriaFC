@@ -32,9 +32,9 @@ public class OrderItem {
 
     private BigDecimal totalPrice;
 
-    @Column(name = "wholesale_applied", nullable = false)
     @Builder.Default
-    private Boolean wholesaleApplied = false;
+    @Column(name = "wholesale_applied", nullable = false)
+    private boolean wholesaleApplied = false;
 
     @Column(name = "pricing_type", length = 20)
     private String pricingType;

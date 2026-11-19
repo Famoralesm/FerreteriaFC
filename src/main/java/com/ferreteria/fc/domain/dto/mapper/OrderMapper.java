@@ -83,7 +83,7 @@ public class OrderMapper {
                         .quantity(item.getQuantity())
                         .unitPrice(item.getUnitPrice())
                         .totalPrice(item.getTotalPrice())
-                        .wholesaleApplied(item.getWholesaleApplied())
+                        .wholesaleApplied(item.isWholesaleApplied())
                         .pricingType(item.getPricingType())
 
                         .build())
