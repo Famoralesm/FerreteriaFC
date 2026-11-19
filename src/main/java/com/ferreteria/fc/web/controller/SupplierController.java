@@ -74,7 +74,10 @@ public class SupplierController {
     }
 
     private SupplierResponse supplierResponse(Supplier s) {
-        return SupplierResponse.builder().id(s.getId()).nombre(s.getNombre())
-                .telefono(s.getTelefono()).email(s.getEmail()).build();
+        return SupplierResponse.builder().id(s.getId()).rut(s.getRut()).nombre(s.getNombre())
+                .razonSocial(s.getRazonSocial()).giro(s.getGiro()).direccion(s.getDireccion())
+                .comuna(s.getComuna()).ciudad(s.getCiudad()).telefono(s.getTelefono())
+                .email(s.getEmail()).activo(s.getActivo()).createdAt(s.getCreatedAt())
+                .updatedAt(s.getUpdatedAt()).build();
     }
 }
