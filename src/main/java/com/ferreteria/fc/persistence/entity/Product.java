@@ -42,6 +42,12 @@ public class Product {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "wholesale_price", precision = 12, scale = 2)
+    private BigDecimal wholesalePrice;
+
+    @Column(name = "wholesale_min_quantity")
+    private Integer wholesaleMinQuantity;
+
     @Column(nullable = false)
     private Integer stock;
 
