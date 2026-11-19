@@ -228,6 +228,8 @@ public class ProductServiceImpl implements ProductService {
             product.setUnit(request.getUnit());
         }
 
+        validarConfiguracionMayorista(product.getWholesalePrice(), product.getWholesaleMinQuantity());
+
         return productMapper.toResponse(
                 productRepository.save(product)
         );
