@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderItemRequest {
+    private Long productId;
     @NotBlank
     private String productName;
     @Min(1)
