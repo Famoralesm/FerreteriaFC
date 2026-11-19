@@ -77,6 +77,23 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado: " + id));
     }
 
+    private String normalizarRut(String rut) {
+        if (rut == null || rut.isBlank()) return null;
+        return rut.trim().replace(".", "").replace("-", "").toUpperCase();
+    }
+
+    private Ciudad resolverCiudad(Ciudad ciudad) {
+        if (ciudad == null || ciudad.getId() == null) return null;
+        return ciudadRepository.findById(ciudad.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Ciudad no encontrada"));
+    }
+
+    private Comuna resolverComuna(Comuna comuna) {
+        if (comuna == null || comuna.getId() == null) return null;
+        return comunaRepository.findById(comuna.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Comuna no encontrada"));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<Supplier> getAll() {
