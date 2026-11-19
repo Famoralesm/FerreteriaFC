@@ -18,6 +18,6 @@ public class OrderItemRequest {
     private String productName;
     @Min(1)
     private Integer quantity;
-    @DecimalMin("1")
+    @DecimalMin("0.0")
     private BigDecimal unitPrice;
 }
