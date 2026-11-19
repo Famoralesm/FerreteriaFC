@@ -24,6 +24,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.ferreteria.fc.domain.repository.StoreRepository;
+import com.ferreteria.fc.domain.enums.Role;
+import com.ferreteria.fc.persistence.entity.Store;
+
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -32,13 +37,18 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
+    private final StoreRepository storeRepository;
 
-    public OrderServiceImpl(OrderRepository orderRepository,
-                            ProductRepository productRepository,
-                            OrderMapper orderMapper) {
+    public OrderServiceImpl(
+            OrderRepository orderRepository,
+            ProductRepository productRepository,
+            OrderMapper orderMapper,
+            StoreRepository storeRepository
+    ) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.orderMapper = orderMapper;
+        this.storeRepository = storeRepository;
     }
 
     @Override
@@ -54,6 +64,34 @@ public class OrderServiceImpl implements OrderService {
         order.setNotes(request.getNotes());
         order.setCreatedBy(user);
         order.setDeliveryDate(request.getDeliveryDate());
+        Store store = storeRepository.findById(request.getStoreId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Sucursal no encontrada: " + request.getStoreId()
+                        )
+                );
+
+        // Los administradores pueden seleccionar cualquier sucursal activa.
+        // Los demás usuarios solo pueden crear pedidos en su sucursal asignada.
+        if (user.getRole() != Role.ADMIN
+                && (user.getSucursal() == null
+                || !Objects.equals(
+                user.getSucursal().getId(),
+                store.getId()
+        ))) {
+
+            throw new IllegalArgumentException(
+                    "No tienes permiso para crear pedidos en esta sucursal"
+            );
+        }
+
+        if (!Boolean.TRUE.equals(store.getActiva())) {
+            throw new IllegalArgumentException(
+                    "La sucursal seleccionada está inactiva"
+            );
+        }
+
+        order.setStore(store);
 
         List<OrderItem> items = request.getItems().stream()
                 .map(i -> buildItem(i, order)).toList();
@@ -179,12 +217,19 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<OrderSummaryResponse> findLatestOrders() {
-        return orderRepository.findLatestOrders(PageRequest.of(0, 10));
+    public List<OrderSummaryResponse> findLatestOrders(Long storeId) {
+
+        return orderRepository.findLatestOrders(
+                storeId,
+                PageRequest.of(0, 10)
+        );
+
     }
 
     @Override
-    public List<OrderSummaryResponse> findAllSummary() {
-        return orderRepository.findAllOrders();
+    public List<OrderSummaryResponse> findAllSummary(Long storeId) {
+
+        return orderRepository.findAllOrders(storeId);
+
     }
 }

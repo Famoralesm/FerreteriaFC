@@ -41,6 +41,11 @@ public class OrderMapper {
                 .statusChangedAt(order.getStatusChangedAt())
 
                 .createdBy(toUserResponse(order.getCreatedBy()))
+                .storeId(
+                        order.getStore() != null
+                                ? order.getStore().getId()
+                                : null
+                )
 
                 .items(toItemResponse(order.getItems()))
 

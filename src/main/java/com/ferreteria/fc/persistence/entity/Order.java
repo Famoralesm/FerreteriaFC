@@ -65,6 +65,14 @@ public class Order {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "store_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_orders_store")
+    )
+    private Store store;
+
     @Builder.Default
     @OneToMany(mappedBy = "order",
             cascade = CascadeType.ALL,

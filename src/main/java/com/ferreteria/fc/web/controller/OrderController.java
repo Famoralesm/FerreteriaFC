@@ -94,15 +94,16 @@ public class OrderController {
     }
 
     @GetMapping("/latest")
-    public List<OrderSummaryResponse> latestOrders(){
-
-        return orderService.findLatestOrders();
-
+    public List<OrderSummaryResponse> latestOrders(
+            @RequestParam Long storeId
+    ) {
+        return orderService.findLatestOrders(storeId);
     }
+
     @GetMapping("/all")
-    public List<OrderSummaryResponse> findAll() {
-
-        return orderService.findAllSummary();
-
+    public List<OrderSummaryResponse> findAll(
+            @RequestParam Long storeId
+    ) {
+        return orderService.findAllSummary(storeId);
     }
 }

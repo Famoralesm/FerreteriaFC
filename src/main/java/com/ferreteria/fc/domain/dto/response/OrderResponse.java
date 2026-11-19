@@ -26,4 +26,5 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime statusChangedAt;
+    private Long storeId;
 }

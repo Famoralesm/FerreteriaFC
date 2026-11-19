@@ -30,4 +30,7 @@ public class CreateOrderRequest {
     private String notes;
     @NotEmpty
     private List<OrderItemRequest> items;
+
+    @NotNull
+    private Long storeId;
 }

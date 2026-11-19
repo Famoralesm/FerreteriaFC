@@ -16,6 +16,6 @@ public interface OrderService {
     OrderResponse updateOrder(Long id, UpdateOrderRequest order);
     OrderResponse patchOrder(Long id, UpdatePatchOrderRequest order);
     void delete(Long id);
-    List<OrderSummaryResponse> findLatestOrders();
-    List<OrderSummaryResponse> findAllSummary();
+    List<OrderSummaryResponse> findLatestOrders(Long storeId);
+    List<OrderSummaryResponse> findAllSummary(Long storeId);
 }
