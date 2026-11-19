@@ -11,6 +11,10 @@ public interface ProductSupplierRepository
 
     List<ProductSupplier> findByProductId(Long productId);
 
+    List<ProductSupplier> findByProductIdOrderByPurchasePriceAsc(Long productId);
+
+    List<ProductSupplier> findBySupplierIdOrderByPurchasePriceAsc(Long supplierId);
+
     Optional<ProductSupplier> findByProductIdAndSelectedTrue(Long productId);
 
     Optional<ProductSupplier> findByProductIdAndSupplierId(
