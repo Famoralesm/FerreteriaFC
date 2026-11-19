@@ -60,7 +60,7 @@ public class SupplierController {
         return ResponseEntity.ok(mapper.toListResponse(productSupplierService.getProductsBySupplier(supplierId)));
     }
 
-    @PostMapping("/{productId}/")
+    @PostMapping({"/{productId}/", "/products/{productId}"})
     public ResponseEntity<ProductSupplierResponse> asociar(@PathVariable Long productId,
             @Valid @RequestBody ProductSupplierRequest request) {
         ProductSupplier result = productSupplierService.addSupplierToProduct(productId, request);
