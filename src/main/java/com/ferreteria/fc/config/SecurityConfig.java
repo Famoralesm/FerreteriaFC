@@ -76,13 +76,9 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
 
                 .authorizeHttpRequests(auth -> auth
-                                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
 
-
-
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login")
-                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/auth/me")
                         .authenticated()
@@ -108,14 +104,25 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/orders/**")
                         .hasRole("ADMIN")
 
+                        // Inventarios físicos
+                        .requestMatchers("/api/inventory-counts/**")
+                        .hasAnyRole("ADMIN", "SELLER")
+
+                        // Movimientos, existencias y sucursales
+                        .requestMatchers(
+                                "/api/inventory/**",
+                                "/api/product-stocks/**",
+                                "/api/stores/**"
+                        )
+                        .hasAnyRole("ADMIN", "SELLER")
+
                         .requestMatchers(HttpMethod.GET, "/api/ciudades/**")
                         .authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/api/comunas/**")
                         .authenticated()
 
-                        .anyRequest()
-                        .authenticated()
+                        .anyRequest().authenticated()
                 )
 
                 .exceptionHandling(exception -> exception
