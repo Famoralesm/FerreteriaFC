@@ -62,11 +62,17 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestParam(required = false) Long sucursalId,
+            Authentication authentication
     ) {
+        User usuario = obtenerUsuario(authentication);
+
+        Long sucursalAutorizada =
+                resolverSucursalId(usuario, sucursalId);
 
         return ResponseEntity.ok(
-                productService.getById(id)
+                productService.getById(id, sucursalAutorizada)
         );
     }
 

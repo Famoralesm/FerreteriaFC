@@ -41,4 +41,6 @@ public class ProductResponse {
     private LocalDateTime updatedAt;
 
     private String imageUrl;
+
+    private Integer stockMinimo;
 }

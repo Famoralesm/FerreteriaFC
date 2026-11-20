@@ -108,14 +108,13 @@ public class ProductServiceImpl implements ProductService {
         return productStockRepository
                 .findAllBySucursalIdWithProduct(sucursalId)
                 .stream()
-                .filter(ps -> Boolean.TRUE.equals(
-                        ps.getProducto().getActive()
-                ))
                 .map(ps -> {
                     ProductResponse response =
                             productMapper.toResponse(ps.getProducto());
 
                     response.setStock(ps.getStock());
+                    response.setStock(ps.getStock());
+                    response.setStockMinimo(ps.getStockMinimo());
                     return response;
                 })
                 .toList();
@@ -123,7 +122,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductResponse getById(Long id) {
+    public ProductResponse getById(Long id, Long sucursalId) {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
@@ -132,7 +131,7 @@ public class ProductServiceImpl implements ProductService {
                         )
                 );
 
-        return productMapper.toResponse(product);
+        return toResponseWithStock(product, sucursalId);
     }
 
     @Override
@@ -292,7 +291,8 @@ public class ProductServiceImpl implements ProductService {
                             productMapper.toResponse(ps.getProducto());
 
                     response.setStock(ps.getStock());
-
+                    response.setStock(ps.getStock());
+                    response.setStockMinimo(ps.getStockMinimo());
                     return response;
                 })
                 .toList();
@@ -383,15 +383,20 @@ public class ProductServiceImpl implements ProductService {
     ) {
         ProductResponse response = productMapper.toResponse(product);
 
-        Integer stock = productStockRepository
+        ProductStock productStock = productStockRepository
                 .findByProductoIdAndSucursalId(
                         product.getId(),
                         sucursalId
                 )
-                .map(ProductStock::getStock)
-                .orElse(0);
+                .orElse(null);
 
-        response.setStock(stock);
+        response.setStock(
+                productStock != null ? productStock.getStock() : 0
+        );
+
+        response.setStockMinimo(
+                productStock != null ? productStock.getStockMinimo() : 0
+        );
 
         return response;
     }

@@ -14,7 +14,7 @@ public interface ProductService {
 
     List<ProductResponse> getAll(Long sucursalId);
 
-    ProductResponse getById(Long id);
+    ProductResponse getById(Long id, Long sucursalId);
 
     ProductResponse updateProduct(
             Long id,
