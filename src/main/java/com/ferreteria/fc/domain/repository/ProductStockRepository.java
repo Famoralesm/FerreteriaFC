@@ -43,4 +43,21 @@ public interface ProductStockRepository
     List<ProductStock> findAllBySucursalIdWithProduct(
             @Param("sucursalId") Long sucursalId
     );
+
+    @Query("""
+    SELECT ps
+    FROM ProductStock ps
+    JOIN FETCH ps.producto p
+    WHERE ps.sucursal.id = :sucursalId
+      AND p.active = true
+      AND (
+          LOWER(p.sku) LIKE LOWER(CONCAT('%', :query, '%'))
+          OR LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))
+      )
+    ORDER BY p.name ASC
+""")
+    List<ProductStock> searchBySucursalAndProduct(
+            @Param("sucursalId") Long sucursalId,
+            @Param("query") String query
+    );
 }

@@ -104,13 +104,21 @@ public class ProductController {
 
     @GetMapping("/search")
     public ResponseEntity<List<ProductResponse>> search(
-            @RequestParam String query) {
+            @RequestParam String query,
+            @RequestParam(required = false) Long sucursalId,
+            Authentication authentication
+    ) {
+
+        User usuario = obtenerUsuario(authentication);
+
+        Long sucursalAutorizada =
+                resolverSucursalId(usuario, sucursalId);
 
         return ResponseEntity.ok(
-                productService.search(query)
-                        .stream()
-                        .map(productMapper::toResponse)
-                        .toList()
+                productService.search(
+                        query,
+                        sucursalAutorizada
+                )
         );
     }
 

@@ -4,8 +4,8 @@ import com.ferreteria.fc.domain.dto.request.CreateProductRequest;
 import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
-import com.ferreteria.fc.persistence.entity.Product;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 public interface ProductService {
@@ -27,15 +27,16 @@ public interface ProductService {
     );
 
     void delete(Long id);
-    List<Product> search(String query);
+
+    List<ProductResponse> search(
+            String query,
+            Long sucursalId
+    );
+
     ProductResponse updateProductImage(
             Long id,
             MultipartFile file
     );
 
     ProductResponse deleteProductImage(Long id);
-    List<ProductResponse> search(
-            String query,
-            Long sucursalId
-    );
 }

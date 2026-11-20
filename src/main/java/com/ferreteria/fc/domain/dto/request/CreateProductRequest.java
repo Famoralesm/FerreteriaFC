@@ -33,10 +33,6 @@ public class CreateProductRequest {
     @Min(1)
     private Integer wholesaleMinQuantity;
 
-    @NotNull
-    @Min(0)
-    private Integer stock;
-
     private Boolean active;
 
     private String category;

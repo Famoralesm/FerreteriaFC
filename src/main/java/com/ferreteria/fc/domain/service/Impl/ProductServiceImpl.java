@@ -270,17 +270,32 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> search(String query) {
+    @Transactional(readOnly = true)
+    public List<ProductResponse> search(
+            String query,
+            Long sucursalId
+    ) {
 
         if (query == null || query.isBlank()) {
             return List.of();
         }
 
-        return productRepository
-                .findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
-                        query,
-                        query
-                );
+        return productStockRepository
+                .searchBySucursalAndProduct(
+                        sucursalId,
+                        query.trim()
+                )
+                .stream()
+                .map(ps -> {
+
+                    ProductResponse response =
+                            productMapper.toResponse(ps.getProducto());
+
+                    response.setStock(ps.getStock());
+
+                    return response;
+                })
+                .toList();
     }
 
     @Override
