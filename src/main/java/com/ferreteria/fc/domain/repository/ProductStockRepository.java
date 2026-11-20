@@ -34,4 +34,13 @@ public interface ProductStockRepository
             @Param("productoId") Long productoId,
             @Param("sucursalId") Long sucursalId
     );
+    @Query("""
+    SELECT ps
+    FROM ProductStock ps
+    JOIN FETCH ps.producto
+    WHERE ps.sucursal.id = :sucursalId
+    """)
+    List<ProductStock> findAllBySucursalIdWithProduct(
+            @Param("sucursalId") Long sucursalId
+    );
 }

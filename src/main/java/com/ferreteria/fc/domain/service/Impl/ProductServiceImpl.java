@@ -78,22 +78,47 @@ public class ProductServiceImpl implements ProductService {
 
         Product saved = productRepository.save(product);
 
-        Store sucursalInicial = storeRepository.findByCodigo("SAN_FRANCISCO")
-                .orElseThrow(() -> new IllegalStateException("No existe la sucursal SAN_FRANCISCO"));
+        List<Store> sucursales =
+                storeRepository.findByActivaTrueOrderByNombreAsc();
 
-        productStockRepository.save(ProductStock.builder()
-                .producto(saved).sucursal(sucursalInicial).stock(0).stockMinimo(0).build());
+        if (sucursales.isEmpty()) {
+            throw new IllegalStateException(
+                    "No existen sucursales activas para inicializar el inventario"
+            );
+        }
+
+        List<ProductStock> stocksIniciales = sucursales.stream()
+                .map(sucursal -> ProductStock.builder()
+                        .producto(saved)
+                        .sucursal(sucursal)
+                        .stock(0)
+                        .stockMinimo(0)
+                        .build())
+                .toList();
+
+        productStockRepository.saveAll(stocksIniciales);
 
         return productMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponse> getAll() {
+    public List<ProductResponse> getAll(Long sucursalId) {
 
-        return productMapper.toListResponse(
-                productRepository.findAll()
-        );
+        return productStockRepository
+                .findAllBySucursalIdWithProduct(sucursalId)
+                .stream()
+                .filter(ps -> Boolean.TRUE.equals(
+                        ps.getProducto().getActive()
+                ))
+                .map(ps -> {
+                    ProductResponse response =
+                            productMapper.toResponse(ps.getProducto());
+
+                    response.setStock(ps.getStock());
+                    return response;
+                })
+                .toList();
     }
 
     @Override
@@ -335,5 +360,24 @@ public class ProductServiceImpl implements ProductService {
 
         }
 
+    }
+
+    private ProductResponse toResponseWithStock(
+            Product product,
+            Long sucursalId
+    ) {
+        ProductResponse response = productMapper.toResponse(product);
+
+        Integer stock = productStockRepository
+                .findByProductoIdAndSucursalId(
+                        product.getId(),
+                        sucursalId
+                )
+                .map(ProductStock::getStock)
+                .orElse(0);
+
+        response.setStock(stock);
+
+        return response;
     }
 }

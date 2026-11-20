@@ -12,7 +12,7 @@ public interface ProductService {
 
     ProductResponse createProduct(CreateProductRequest request);
 
-    List<ProductResponse> getAll();
+    List<ProductResponse> getAll(Long sucursalId);
 
     ProductResponse getById(Long id);
 
@@ -34,4 +34,8 @@ public interface ProductService {
     );
 
     ProductResponse deleteProductImage(Long id);
+    List<ProductResponse> search(
+            String query,
+            Long sucursalId
+    );
 }

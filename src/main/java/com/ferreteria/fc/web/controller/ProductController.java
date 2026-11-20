@@ -9,7 +9,10 @@ import com.ferreteria.fc.domain.service.ProductService;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
-
+import com.ferreteria.fc.domain.service.UserService;
+import com.ferreteria.fc.persistence.entity.User;
+import com.ferreteria.fc.domain.enums.Role;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,13 +25,14 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductMapper productMapper;
-
+    private final UserService userService;
 
     public ProductController(
-            ProductService productService, ProductMapper productMapper
+            ProductService productService, ProductMapper productMapper, UserService userService
     ) {
         this.productService = productService;
         this.productMapper = productMapper;
+        this.userService = userService;
     }
 
     @PostMapping
@@ -42,10 +46,17 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductResponse>> getAll() {
+    public ResponseEntity<List<ProductResponse>> getAll(
+            @RequestParam(required = false) Long sucursalId,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+
+        Long sucursalAutorizada =
+                resolverSucursalId(usuario, sucursalId);
 
         return ResponseEntity.ok(
-                productService.getAll()
+                productService.getAll(sucursalAutorizada)
         );
     }
 
@@ -128,5 +139,38 @@ public class ProductController {
                 productService.deleteProductImage(id)
         );
 
+    }
+    private Long resolverSucursalId(
+            User usuario,
+            Long sucursalId
+    ) {
+        if (usuario.getRole() == Role.ADMIN) {
+            if (sucursalId == null) {
+                throw new IllegalArgumentException(
+                        "Debe seleccionar una sucursal"
+                );
+            }
+
+            return sucursalId;
+        }
+
+        if (usuario.getSucursal() == null) {
+            throw new IllegalArgumentException(
+                    "El usuario no tiene una sucursal asignada"
+            );
+        }
+
+        // El vendedor nunca puede elegir otra sucursal.
+        return usuario.getSucursal().getId();
+    }
+
+    private User obtenerUsuario(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException(
+                    "No existe un usuario autenticado"
+            );
+        }
+
+        return userService.getByEmail(authentication.getName());
     }
 }
