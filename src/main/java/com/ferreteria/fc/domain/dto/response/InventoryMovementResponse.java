@@ -5,6 +5,7 @@ import com.ferreteria.fc.domain.enums.MovementType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -23,11 +24,11 @@ public class InventoryMovementResponse {
 
     private MovementType tipoMovimiento;
 
-    private Integer cantidad;
+    private BigDecimal cantidad;
 
-    private Integer stockAnterior;
+    private BigDecimal stockAnterior;
 
-    private Integer stockNuevo;
+    private BigDecimal stockNuevo;
 
     private String motivo;
 
