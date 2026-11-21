@@ -1,6 +1,8 @@
 package com.ferreteria.fc.domain.dto.request;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
+import java.math.BigDecimal;
 import lombok.*;
 
 @Getter
@@ -17,7 +19,8 @@ public class InventoryMovementRequest {
     private Long sucursalId;
 
     @NotNull
-    private Integer cantidad;
+    @DecimalMin(value = "0.0001")
+    private BigDecimal cantidad;
 
     private String motivo;
 
