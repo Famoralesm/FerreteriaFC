@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @Service
 @Transactional
@@ -62,7 +63,7 @@ public class InventoryServiceImpl implements InventoryService {
         validarCantidadPositiva(request.getCantidad());
 
         return registrarMovimiento(
-                request, usuario, MovementType.EXIT, -request.getCantidad()
+                request, usuario, MovementType.EXIT, request.getCantidad().negate()
         );
     }
 
@@ -72,8 +73,7 @@ public class InventoryServiceImpl implements InventoryService {
             User usuario
     ) {
         if (request.getCantidad() == null
-                || request.getCantidad() == 0
-                || request.getCantidad() == Integer.MIN_VALUE) {
+                || request.getCantidad().compareTo(BigDecimal.ZERO) == 0) {
             throw new IllegalArgumentException(
                     "La diferencia del ajuste debe ser distinta de cero"
             );
@@ -89,7 +89,7 @@ public class InventoryServiceImpl implements InventoryService {
             InventoryMovementRequest request,
             User usuario,
             MovementType tipo,
-            Integer diferencia
+            BigDecimal diferencia
     ) {
         if (request.getProductoId() == null) {
             throw new IllegalArgumentException("Debe indicar el producto");
@@ -128,26 +128,26 @@ public class InventoryServiceImpl implements InventoryService {
 
         validarReferenciaDuplicada(request, tipo, sucursalId);
 
-        Integer stockAnterior = productoStock.getStock() != null
+        BigDecimal stockAnterior = productoStock.getStock() != null
                 ? productoStock.getStock()
-                : 0;
+                : BigDecimal.ZERO;
 
-        long resultado = (long) stockAnterior + diferencia;
+        BigDecimal resultado = stockAnterior.add(diferencia);
 
-        if (resultado < 0) {
+        if (resultado.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(
                     "Stock insuficiente en " + sucursal.getNombre()
-                            + ". Disponible: " + stockAnterior
+                            + ". Disponible: " + stockAnterior.toPlainString()
             );
         }
 
-        if (resultado > Integer.MAX_VALUE) {
+        if (resultado.compareTo(new BigDecimal("9999999999.9999")) > 0) {
             throw new IllegalArgumentException(
                     "La cantidad supera el límite de stock permitido"
             );
         }
 
-        Integer stockNuevo = (int) resultado;
+        BigDecimal stockNuevo = resultado;
 
         productoStock.setStock(stockNuevo);
         productStockRepository.save(productoStock);
@@ -156,7 +156,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .producto(producto)
                 .sucursal(sucursal)
                 .tipoMovimiento(tipo)
-                .cantidad(Math.abs(diferencia))
+                .cantidad(diferencia.abs())
                 .stockAnterior(stockAnterior)
                 .stockNuevo(stockNuevo)
                 .motivo(request.getMotivo())
@@ -199,8 +199,8 @@ public class InventoryServiceImpl implements InventoryService {
         return usuario.getSucursal().getId();
     }
 
-    private void validarCantidadPositiva(Integer cantidad) {
-        if (cantidad == null || cantidad <= 0) {
+    private void validarCantidadPositiva(BigDecimal cantidad) {
+        if (cantidad == null || cantidad.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
                     "La cantidad debe ser mayor que cero"
             );
