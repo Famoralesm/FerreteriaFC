@@ -16,6 +16,8 @@ public interface ProductUnitRepository
 
     List<ProductUnit> findByProductIdOrderByNameAsc(Long productId);
 
+    Optional<ProductUnit> findByProductIdAndCode(Long productId, String code);
+
     Optional<ProductUnit> findByIdAndProductId(
             Long id,
             Long productId
