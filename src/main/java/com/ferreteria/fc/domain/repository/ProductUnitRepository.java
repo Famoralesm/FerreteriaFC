@@ -14,6 +14,8 @@ public interface ProductUnitRepository
             Long productId
     );
 
+    List<ProductUnit> findByProductIdOrderByNameAsc(Long productId);
+
     Optional<ProductUnit> findByIdAndProductId(
             Long id,
             Long productId
