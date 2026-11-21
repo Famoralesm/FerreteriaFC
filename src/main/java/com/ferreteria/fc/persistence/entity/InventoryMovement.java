@@ -7,6 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(
@@ -37,14 +38,14 @@ public class InventoryMovement {
     @Column(name = "movement_type", nullable = false, length = 20)
     private MovementType tipoMovimiento;
 
-    @Column(nullable = false)
-    private Integer cantidad;
+    @Column(nullable = false, precision = 14, scale = 4)
+    private BigDecimal cantidad;
 
-    @Column(name = "stock_before", nullable = false)
-    private Integer stockAnterior;
+    @Column(name = "stock_before", nullable = false, precision = 14, scale = 4)
+    private BigDecimal stockAnterior;
 
-    @Column(name = "stock_after", nullable = false)
-    private Integer stockNuevo;
+    @Column(name = "stock_after", nullable = false, precision = 14, scale = 4)
+    private BigDecimal stockNuevo;
 
     @Column(length = 500)
     private String motivo;
