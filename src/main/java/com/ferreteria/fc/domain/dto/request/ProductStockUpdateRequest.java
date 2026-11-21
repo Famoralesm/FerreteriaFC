@@ -1,8 +1,10 @@
 package com.ferreteria.fc.domain.dto.request;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -11,12 +13,12 @@ import lombok.*;
 @Builder
 public class ProductStockUpdateRequest {
     @NotNull
-    @Min(0)
-    private Integer stock;
+    @DecimalMin("0")
+    private BigDecimal stock;
 
     @NotNull
-    @Min(0)
-    private Integer stockMinimo;
+    @DecimalMin("0")
+    private BigDecimal stockMinimo;
 
     private String motivo;
 }
