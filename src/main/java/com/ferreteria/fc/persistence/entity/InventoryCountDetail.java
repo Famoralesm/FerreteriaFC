@@ -2,6 +2,7 @@
 package com.ferreteria.fc.persistence.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.*;
 
 @Entity
@@ -38,16 +39,16 @@ public class InventoryCountDetail {
     private Product product;
 
     // Stock que tenía el sistema cuando se agregó al conteo.
-    @Column(name = "expected_stock", nullable = false)
-    private Integer expectedStock;
+    @Column(name = "expected_stock", nullable = false, precision = 14, scale = 4)
+    private BigDecimal expectedStock;
 
     // Cantidad contada físicamente.
-    @Column(name = "counted_stock")
-    private Integer countedStock;
+    @Column(name = "counted_stock", precision = 14, scale = 4)
+    private BigDecimal countedStock;
 
     // countedStock - expectedStock.
-    @Column(name = "difference")
-    private Integer difference;
+    @Column(name = "difference", precision = 14, scale = 4)
+    private BigDecimal difference;
 
     @Column(length = 500)
     private String notes;
