@@ -26,7 +26,8 @@ public class OrderItem {
 
     private String productName;
 
-    private Integer quantity;
+    @Column(precision = 14, scale = 4)
+    private BigDecimal quantity;
 
     private BigDecimal unitPrice;
 
