@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @Service
 @Transactional
@@ -91,8 +92,8 @@ public class ProductServiceImpl implements ProductService {
                 .map(sucursal -> ProductStock.builder()
                         .producto(saved)
                         .sucursal(sucursal)
-                        .stock(0)
-                        .stockMinimo(0)
+                        .stock(BigDecimal.ZERO)
+                        .stockMinimo(BigDecimal.ZERO)
                         .build())
                 .toList();
 
@@ -112,7 +113,6 @@ public class ProductServiceImpl implements ProductService {
                     ProductResponse response =
                             productMapper.toResponse(ps.getProducto());
 
-                    response.setStock(ps.getStock());
                     response.setStock(ps.getStock());
                     response.setStockMinimo(ps.getStockMinimo());
                     return response;
@@ -391,11 +391,11 @@ public class ProductServiceImpl implements ProductService {
                 .orElse(null);
 
         response.setStock(
-                productStock != null ? productStock.getStock() : 0
+                productStock != null ? productStock.getStock() : BigDecimal.ZERO
         );
 
         response.setStockMinimo(
-                productStock != null ? productStock.getStockMinimo() : 0
+                productStock != null ? productStock.getStockMinimo() : BigDecimal.ZERO
         );
 
         return response;
