@@ -4,6 +4,7 @@ package com.ferreteria.fc.domain.dto.response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -28,9 +29,9 @@ public class ProductStockResponse {
 
     private String nombreSucursal;
 
-    private Integer stock;
+    private BigDecimal stock;
 
-    private Integer stockMinimo;
+    private BigDecimal stockMinimo;
 
     private Boolean bajoStock;
 
