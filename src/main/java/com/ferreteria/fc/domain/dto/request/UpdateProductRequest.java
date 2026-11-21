@@ -34,10 +34,6 @@ public class UpdateProductRequest {
     private Integer wholesaleMinQuantity;
 
     @NotNull
-    @Min(0)
-    private Integer stock;
-
-    @NotNull
     private Boolean active;
 
     private String category;
