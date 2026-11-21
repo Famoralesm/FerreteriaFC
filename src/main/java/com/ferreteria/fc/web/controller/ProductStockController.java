@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/product-stocks")
@@ -113,13 +114,13 @@ public class ProductStockController {
         var producto = productoStock.getProducto();
         var sucursal = productoStock.getSucursal();
 
-        Integer stock = productoStock.getStock() != null
+        BigDecimal stock = productoStock.getStock() != null
                 ? productoStock.getStock()
-                : 0;
+                : BigDecimal.ZERO;
 
-        Integer stockMinimo = productoStock.getStockMinimo() != null
+        BigDecimal stockMinimo = productoStock.getStockMinimo() != null
                 ? productoStock.getStockMinimo()
-                : 0;
+                : BigDecimal.ZERO;
 
         return ProductStockResponse.builder()
                 .id(productoStock.getId())
@@ -132,7 +133,7 @@ public class ProductStockController {
                 .nombreSucursal(sucursal.getNombre())
                 .stock(stock)
                 .stockMinimo(stockMinimo)
-                .bajoStock(stock <= stockMinimo)
+                .bajoStock(stock.compareTo(stockMinimo) <= 0)
                 .fechaActualizacion(productoStock.getFechaActualizacion())
                 .build();
     }
