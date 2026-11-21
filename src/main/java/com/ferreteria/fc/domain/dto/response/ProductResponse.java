@@ -26,7 +26,7 @@ public class ProductResponse {
 
     private Integer wholesaleMinQuantity;
 
-    private Integer stock;
+    private BigDecimal stock;
 
     private Boolean active;
 
@@ -42,5 +42,5 @@ public class ProductResponse {
 
     private String imageUrl;
 
-    private Integer stockMinimo;
+    private BigDecimal stockMinimo;
 }
