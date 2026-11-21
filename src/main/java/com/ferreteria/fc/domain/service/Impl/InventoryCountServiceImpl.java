@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Service
 @Transactional
@@ -52,7 +53,7 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         for (ProductStock ps : stocks) {
             if (!Boolean.TRUE.equals(ps.getProducto().getActive())) continue;
             detailRepository.save(InventoryCountDetail.builder().inventoryCount(count)
-                    .product(ps.getProducto()).expectedStock(ps.getStock() == null ? 0 : ps.getStock())
+                    .product(ps.getProducto()).expectedStock(ps.getStock() == null ? BigDecimal.ZERO : ps.getStock())
                     .adjustmentApplied(false).build());
         }
         count.setStatus(InventoryCountStatus.IN_PROGRESS);
@@ -68,7 +69,7 @@ public class InventoryCountServiceImpl implements InventoryCountService {
                 .orElseThrow(() -> new IllegalArgumentException("Producto fuera del inventario"));
         if (Boolean.TRUE.equals(d.getAdjustmentApplied())) throw new IllegalStateException("Ajuste ya aplicado");
         d.setCountedStock(request.getCantidadContada());
-        d.setDifference(request.getCantidadContada() - d.getExpectedStock());
+        d.setDifference(request.getCantidadContada().subtract(d.getExpectedStock()));
         d.setNotes(request.getObservaciones());
         detailRepository.save(d);
         return response(count);
@@ -82,21 +83,21 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         if (lines.isEmpty() || lines.stream().anyMatch(d -> d.getCountedStock() == null))
             throw new IllegalStateException("Falta contar uno o más productos");
         for (InventoryCountDetail d : lines) {
-            int delta = d.getCountedStock() - d.getExpectedStock();
-            if (delta != 0) {
+            BigDecimal delta = d.getCountedStock().subtract(d.getExpectedStock());
+            if (delta.compareTo(BigDecimal.ZERO) != 0) {
                 ProductStock ps = stockRepository.findByProductoAndSucursalForUpdate(
                         d.getProduct().getId(), count.getSucursal().getId())
                         .orElseThrow(() -> new IllegalStateException("Stock no inicializado: " + d.getProduct().getSku()));
-                int before = ps.getStock() == null ? 0 : ps.getStock();
-                long afterLong = (long) before + delta;
-                if (afterLong < 0 || afterLong > Integer.MAX_VALUE)
+                BigDecimal before = ps.getStock() == null ? BigDecimal.ZERO : ps.getStock();
+                BigDecimal after = before.add(delta);
+                if (after.compareTo(BigDecimal.ZERO) < 0
+                        || after.compareTo(new BigDecimal("9999999999.9999")) > 0)
                     throw new IllegalStateException("Ajuste inválido: " + d.getProduct().getSku());
-                int after = (int) afterLong;
                 ps.setStock(after);
                 stockRepository.save(ps);
                 movementRepository.save(InventoryMovement.builder().producto(d.getProduct())
                         .sucursal(count.getSucursal()).tipoMovimiento(MovementType.ADJUSTMENT)
-                        .cantidad(Math.abs(delta)).stockAnterior(before).stockNuevo(after)
+                        .cantidad(delta.abs()).stockAnterior(before).stockNuevo(after)
                         .motivo("Inventario físico #" + count.getId() + (d.getNotes() == null ? "" : " - " + d.getNotes()))
                         .tipoReferencia("INVENTORY_COUNT").referenciaId(count.getId()).usuario(usuario).build());
             }
