@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(
@@ -40,13 +41,13 @@ public class ProductStock {
     @JoinColumn(name = "store_id", nullable = false)
     private Store sucursal;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 14, scale = 4)
     @Builder.Default
-    private Integer stock = 0;
+    private BigDecimal stock = BigDecimal.ZERO;
 
-    @Column(name = "minimum_stock", nullable = false)
+    @Column(name = "minimum_stock", nullable = false, precision = 14, scale = 4)
     @Builder.Default
-    private Integer stockMinimo = 0;
+    private BigDecimal stockMinimo = BigDecimal.ZERO;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
