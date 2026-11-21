@@ -5,6 +5,7 @@ import com.ferreteria.fc.persistence.entity.Product;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @Component
 public class ProductMapper {
@@ -23,7 +24,7 @@ public class ProductMapper {
                 .price(product.getPrice())
                 .wholesalePrice(product.getWholesalePrice())
                 .wholesaleMinQuantity(product.getWholesaleMinQuantity())
-                .stock(product.getStock())
+                .stock(product.getStock() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getStock()))
                 .active(product.getActive())
                 .category(product.getCategory())
                 .brand(product.getBrand())
