@@ -120,7 +120,7 @@ public class OrderMapper {
                         .unitPrice(item.getUnitPrice())
                         .totalPrice(
                                 item.getUnitPrice()
-                                        .multiply(BigDecimal.valueOf(item.getQuantity()))
+                                        .multiply(item.getQuantity())
                         )
                         .build())
                 .toList();
