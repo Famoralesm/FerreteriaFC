@@ -103,7 +103,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderItem buildItem(OrderItemRequest request, Order order) {
-        if (request.getQuantity() == null || request.getQuantity() < 1)
+        if (request.getQuantity() == null || request.getQuantity().compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("La cantidad del producto debe ser mayor que cero");
 
         Product product = null;
@@ -123,7 +123,7 @@ public class OrderServiceImpl implements OrderService {
 
             if (product.getWholesalePrice() != null
                     && product.getWholesaleMinQuantity() != null
-                    && request.getQuantity() >= product.getWholesaleMinQuantity()) {
+                    && request.getQuantity().compareTo(BigDecimal.valueOf(product.getWholesaleMinQuantity())) >= 0) {
                 unitPrice = product.getWholesalePrice();
                 wholesale = true;
                 pricingType = "WHOLESALE";
@@ -141,7 +141,7 @@ public class OrderServiceImpl implements OrderService {
         item.setProductName(productName);
         item.setQuantity(request.getQuantity());
         item.setUnitPrice(unitPrice);
-        item.setTotalPrice(unitPrice.multiply(BigDecimal.valueOf(request.getQuantity())));
+        item.setTotalPrice(unitPrice.multiply(request.getQuantity()));
         item.setWholesaleApplied(wholesale);
         item.setPricingType(pricingType);
         return item;
