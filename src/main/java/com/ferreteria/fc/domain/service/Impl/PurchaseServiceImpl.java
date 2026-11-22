@@ -1,5 +1,7 @@
 package com.ferreteria.fc.domain.service.Impl;
 
+import com.ferreteria.fc.domain.enums.InventoryCountStatus;
+import com.ferreteria.fc.domain.enums.MovementType;
 import com.ferreteria.fc.domain.enums.PurchaseStatus;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.*;
@@ -14,8 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 @Transactional
@@ -23,25 +28,35 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     private static final BigDecimal FACTOR_UNIDAD_BASE = BigDecimal.ONE;
     private static final BigDecimal MAX_CANTIDAD = new BigDecimal("9999999999.9999");
+    private static final String TIPO_REFERENCIA_COMPRA = "PURCHASE";
 
     private final PurchaseRepository purchaseRepository;
     private final SupplierRepository supplierRepository;
     private final StoreRepository storeRepository;
     private final ProductRepository productRepository;
     private final ProductUnitRepository productUnitRepository;
+    private final ProductStockRepository productStockRepository;
+    private final InventoryMovementRepository inventoryMovementRepository;
+    private final InventoryCountRepository inventoryCountRepository;
 
     public PurchaseServiceImpl(
             PurchaseRepository purchaseRepository,
             SupplierRepository supplierRepository,
             StoreRepository storeRepository,
             ProductRepository productRepository,
-            ProductUnitRepository productUnitRepository
+            ProductUnitRepository productUnitRepository,
+            ProductStockRepository productStockRepository,
+            InventoryMovementRepository inventoryMovementRepository,
+            InventoryCountRepository inventoryCountRepository
     ) {
         this.purchaseRepository = purchaseRepository;
         this.supplierRepository = supplierRepository;
         this.storeRepository = storeRepository;
         this.productRepository = productRepository;
         this.productUnitRepository = productUnitRepository;
+        this.productStockRepository = productStockRepository;
+        this.inventoryMovementRepository = inventoryMovementRepository;
+        this.inventoryCountRepository = inventoryCountRepository;
     }
 
     @Override
@@ -109,6 +124,165 @@ public class PurchaseServiceImpl implements PurchaseService {
         // Registrar la compra no modifica ProductStock ni crea InventoryMovement.
         Purchase saved = purchaseRepository.save(purchase);
         return toResponse(saved);
+    }
+
+    @Override
+    public PurchaseResponse receive(Long purchaseId, User usuario) {
+        validarUsuario(usuario);
+
+        if (purchaseId == null || purchaseId <= 0) {
+            throw new IllegalArgumentException("Debe indicar una compra válida");
+        }
+
+        // El bloqueo evita que dos solicitudes reciban la misma compra simultáneamente.
+        Purchase purchase = purchaseRepository.findByIdForUpdate(purchaseId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Compra no encontrada: " + purchaseId
+                ));
+
+        if (purchase.getStatus() != PurchaseStatus.PENDING_RECEIPT) {
+            throw new IllegalStateException(
+                    "Solo se pueden recibir compras pendientes. Estado actual: "
+                            + purchase.getStatus()
+            );
+        }
+
+        Long sucursalId = purchase.getSucursal().getId();
+        validarSucursalAutorizada(sucursalId, usuario);
+
+        if (inventoryCountRepository.existsBySucursalIdAndStatus(
+                sucursalId, InventoryCountStatus.IN_PROGRESS)) {
+            throw new IllegalStateException(
+                    "No se puede recibir la compra mientras exista un inventario físico en curso"
+            );
+        }
+
+        if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
+            throw new IllegalStateException(
+                    "La compra no contiene productos para recibir"
+            );
+        }
+
+        // Se consolidan líneas repetidas del mismo producto para crear un movimiento único.
+        // TreeMap mantiene un orden estable de bloqueo y reduce el riesgo de deadlocks.
+        Map<Long, BigDecimal> cantidadesPorProducto = new TreeMap<>();
+
+        for (PurchaseItem item : purchase.getItems()) {
+            BigDecimal cantidad = item.getQuantityBaseUnit();
+
+            if (cantidad == null
+                    || cantidad.compareTo(BigDecimal.ZERO) <= 0
+                    || cantidad.compareTo(MAX_CANTIDAD) > 0) {
+                throw new IllegalStateException(
+                        "La cantidad convertida no es válida para el producto "
+                                + item.getProductSkuSnapshot()
+                );
+            }
+
+            cantidadesPorProducto.merge(
+                    item.getProduct().getId(),
+                    cantidad,
+                    BigDecimal::add
+            );
+        }
+
+        for (Map.Entry<Long, BigDecimal> entry : cantidadesPorProducto.entrySet()) {
+            Long productId = entry.getKey();
+            BigDecimal cantidadEntrada = entry.getValue()
+                    .setScale(4, RoundingMode.UNNECESSARY);
+
+            if (cantidadEntrada.compareTo(MAX_CANTIDAD) > 0) {
+                throw new IllegalArgumentException(
+                        "La cantidad total supera el límite permitido para el producto "
+                                + productId
+                );
+            }
+
+            Product product = productRepository.findByIdForUpdate(productId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Producto no encontrado: " + productId
+                    ));
+
+            if (!Boolean.TRUE.equals(product.getActive())) {
+                throw new IllegalArgumentException(
+                        "No se puede recibir un producto inactivo: " + product.getSku()
+                );
+            }
+
+            ProductStock productStock = productStockRepository
+                    .findByProductoAndSucursalForUpdate(productId, sucursalId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "El producto " + product.getSku()
+                                    + " no tiene inventario inicializado en "
+                                    + purchase.getSucursal().getNombre()
+                    ));
+
+            boolean movimientoExiste = inventoryMovementRepository
+                    .existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
+                            productId,
+                            sucursalId,
+                            MovementType.ENTRY,
+                            TIPO_REFERENCIA_COMPRA,
+                            purchaseId
+                    );
+
+            if (movimientoExiste) {
+                throw new IllegalStateException(
+                        "Ya existe un movimiento de recepción para el producto "
+                                + product.getSku() + " en esta compra"
+                );
+            }
+
+            BigDecimal stockAnterior = productStock.getStock() != null
+                    ? productStock.getStock()
+                    : BigDecimal.ZERO;
+            BigDecimal stockNuevo = stockAnterior.add(cantidadEntrada);
+
+            if (stockNuevo.compareTo(MAX_CANTIDAD) > 0) {
+                throw new IllegalArgumentException(
+                        "La recepción supera el límite de stock permitido para "
+                                + product.getSku()
+                );
+            }
+
+            productStock.setStock(stockNuevo);
+            productStockRepository.save(productStock);
+
+            InventoryMovement movement = InventoryMovement.builder()
+                    .producto(product)
+                    .sucursal(purchase.getSucursal())
+                    .tipoMovimiento(MovementType.ENTRY)
+                    .cantidad(cantidadEntrada)
+                    .stockAnterior(stockAnterior)
+                    .stockNuevo(stockNuevo)
+                    .motivo("Recepción de compra #" + purchaseId)
+                    .tipoReferencia(TIPO_REFERENCIA_COMPRA)
+                    .referenciaId(purchaseId)
+                    .usuario(usuario)
+                    .build();
+
+            inventoryMovementRepository.save(movement);
+        }
+
+        purchase.setStatus(PurchaseStatus.RECEIVED);
+        purchase.setReceivedBy(usuario);
+        purchase.setReceivedAt(LocalDateTime.now());
+
+        Purchase saved = purchaseRepository.save(purchase);
+        return toResponse(saved);
+    }
+
+    private void validarSucursalAutorizada(Long sucursalId, User usuario) {
+        if (usuario.getRole() == Role.ADMIN) {
+            return;
+        }
+
+        if (usuario.getSucursal() == null
+                || !usuario.getSucursal().getId().equals(sucursalId)) {
+            throw new IllegalArgumentException(
+                    "No tienes permiso para recibir compras de otra sucursal"
+            );
+        }
     }
 
     private PurchaseItem construirDetalle(
