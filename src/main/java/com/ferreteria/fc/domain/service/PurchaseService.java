@@ -7,4 +7,6 @@ import com.ferreteria.fc.persistence.entity.User;
 public interface PurchaseService {
 
     PurchaseResponse register(PurchaseRequest request, User usuario);
+
+    PurchaseResponse receive(Long purchaseId, User usuario);
 }
