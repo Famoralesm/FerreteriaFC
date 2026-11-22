@@ -14,6 +14,7 @@ import com.ferreteria.fc.domain.repository.ProductStockRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.ProductStock;
+import com.ferreteria.fc.persistence.entity.InventoryMovement;
 import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.persistence.entity.User;
 import org.springframework.http.ResponseEntity;
@@ -256,34 +257,6 @@ public class ProductStockController {
                     "La sucursal seleccionada está inactiva"
             );
         }
-    }
-
-    private ProductStockResponse toResponse(ProductStock productoStock) {
-        var producto = productoStock.getProducto();
-        var sucursal = productoStock.getSucursal();
-
-        BigDecimal stock = productoStock.getStock() != null
-                ? productoStock.getStock()
-                : BigDecimal.ZERO;
-
-        BigDecimal stockMinimo = productoStock.getStockMinimo() != null
-                ? productoStock.getStockMinimo()
-                : BigDecimal.ZERO;
-
-        return ProductStockResponse.builder()
-                .id(productoStock.getId())
-                .productoId(producto.getId())
-                .sku(producto.getSku())
-                .nombreProducto(producto.getName())
-                .categoria(producto.getCategory())
-                .marca(producto.getBrand())
-                .sucursalId(sucursal.getId())
-                .nombreSucursal(sucursal.getNombre())
-                .stock(stock)
-                .stockMinimo(stockMinimo)
-                .bajoStock(stock.compareTo(stockMinimo) <= 0)
-                .fechaActualizacion(productoStock.getFechaActualizacion())
-                .build();
     }
 
     private User obtenerUsuario(Authentication authentication) {
