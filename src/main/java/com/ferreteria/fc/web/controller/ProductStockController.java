@@ -219,6 +219,8 @@ public class ProductStockController {
                 .stockMinimo(minimo)
                 .bajoStock(stock.compareTo(minimo) <= 0)
                 .fechaActualizacion(productoStock.getFechaActualizacion())
+                .inventarioInicialRegistrado(movementRepository.existsByProductoIdAndSucursalId(
+                        producto.getId(), sucursal.getId()))
                 .build();
     }
 
