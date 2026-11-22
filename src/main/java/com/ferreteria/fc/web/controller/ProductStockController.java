@@ -144,16 +144,22 @@ public class ProductStockController {
         stock.setStockMinimo(request.getStockMinimo());
         productStockRepository.saveAndFlush(stock);
 
+        String motivoInicial = request.getMotivo() == null || request.getMotivo().isBlank()
+                ? "Inventario inicial"
+                : request.getMotivo().trim();
+        if (anterior.compareTo(BigDecimal.ZERO) > 0) {
+            motivoInicial += " (saldo provisional anterior reemplazado: "
+                    + anterior.toPlainString() + ")";
+        }
+
         InventoryMovement movimiento = InventoryMovement.builder()
                 .producto(producto)
                 .sucursal(stock.getSucursal())
                 .tipoMovimiento(MovementType.INITIAL)
                 .cantidad(nuevo)
-                .stockAnterior(anterior)
+                .stockAnterior(BigDecimal.ZERO)
                 .stockNuevo(nuevo)
-                .motivo(request.getMotivo() == null || request.getMotivo().isBlank()
-                        ? "Inventario inicial"
-                        : request.getMotivo().trim())
+                .motivo(motivoInicial)
                 .tipoReferencia("INITIAL_STOCK")
                 .referenciaId(stock.getId())
                 .usuario(usuario)
