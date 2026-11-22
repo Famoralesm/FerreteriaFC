@@ -159,9 +159,16 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
+            BigDecimal conversionFactor = selectedUnit != null
+                    ? selectedUnit.getConversionFactor()
+                    : BigDecimal.ONE;
+            BigDecimal quantityInBaseUnit = request.getQuantity().multiply(conversionFactor);
+
+            // El umbral mayorista siempre se evalúa en la unidad base del producto,
+            // independientemente de si se vende por unidad, caja, pack u otra presentación.
             if (product.getWholesalePrice() != null
                     && product.getWholesaleMinQuantity() != null
-                    && request.getQuantity().compareTo(
+                    && quantityInBaseUnit.compareTo(
                             BigDecimal.valueOf(product.getWholesaleMinQuantity())
                     ) >= 0) {
                 unitPrice = product.getWholesalePrice();
@@ -202,7 +209,9 @@ public class OrderServiceImpl implements OrderService {
                     : "Unidad base"));
         item.setConversionFactorSnapshot(conversionFactor);
         item.setUnitPrice(unitPrice);
-        item.setTotalPrice(unitPrice.multiply(request.getQuantity()));
+        // Product.price y Product.wholesalePrice corresponden al precio por unidad base.
+        // El factor solo convierte la cantidad; no crea un precio distinto por presentación.
+        item.setTotalPrice(unitPrice.multiply(request.getQuantity()).multiply(conversionFactor));
         item.setWholesaleApplied(wholesale);
         item.setPricingType(pricingType);
         return item;
