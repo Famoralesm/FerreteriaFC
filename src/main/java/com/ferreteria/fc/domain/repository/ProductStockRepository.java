@@ -21,6 +21,20 @@ public interface ProductStockRepository
 
     List<ProductStock> findBySucursalId(Long sucursalId);
 
+    @Query("""
+        SELECT ps
+        FROM ProductStock ps
+        JOIN FETCH ps.producto p
+        WHERE ps.sucursal.id = :sucursalId
+          AND p.active = true
+          AND ps.stockMinimo > 0
+          AND ps.stock <= ps.stockMinimo
+        ORDER BY p.name ASC
+    """)
+    List<ProductStock> findLowStockBySucursalId(
+            @Param("sucursalId") Long sucursalId
+    );
+
     List<ProductStock> findByProductoId(Long productoId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
