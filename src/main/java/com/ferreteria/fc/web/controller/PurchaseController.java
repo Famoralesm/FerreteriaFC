@@ -38,6 +38,18 @@ public class PurchaseController {
                 .body(purchaseService.register(request, usuario));
     }
 
+    @PostMapping("/{purchaseId}/receive")
+    public ResponseEntity<PurchaseResponse> receive(
+            @PathVariable Long purchaseId,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+
+        return ResponseEntity.ok(
+                purchaseService.receive(purchaseId, usuario)
+        );
+    }
+
     private User obtenerUsuario(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new IllegalStateException(
