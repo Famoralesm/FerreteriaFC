@@ -15,10 +15,13 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class OrderItemRequest {
     private Long productId;
+    private Long unitId;
     private String productName;
+
     @NotNull
     @DecimalMin(value = "0.0001", message = "La cantidad debe ser mayor que cero")
     private BigDecimal quantity;
+
     @DecimalMin("1")
     private BigDecimal unitPrice;
 }
