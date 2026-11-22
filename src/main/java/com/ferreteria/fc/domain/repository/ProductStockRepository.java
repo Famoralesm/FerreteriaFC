@@ -27,8 +27,13 @@ public interface ProductStockRepository
         JOIN FETCH ps.producto p
         WHERE ps.sucursal.id = :sucursalId
           AND p.active = true
-          AND ps.stockMinimo > 0
-          AND ps.stock <= ps.stockMinimo
+          AND (
+              ps.stock = 0
+              OR (
+                  ps.stockMinimo > 0
+                  AND ps.stock < ps.stockMinimo
+              )
+          )
         ORDER BY p.name ASC
     """)
     List<ProductStock> findLowStockBySucursalId(
