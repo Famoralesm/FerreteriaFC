@@ -4,14 +4,13 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-
 import java.math.BigDecimal;
 
 @Entity
-@Getter // Genera getters
-@Setter // Genera setters
-@NoArgsConstructor // Requerido por JPA
-@AllArgsConstructor //
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @Table(name = "order_items")
 public class OrderItem {
@@ -28,6 +27,18 @@ public class OrderItem {
 
     @Column(precision = 14, scale = 4)
     private BigDecimal quantity;
+
+    @Column(name = "unit_id_snapshot")
+    private Long unitIdSnapshot;
+
+    @Column(name = "unit_code_snapshot", length = 30)
+    private String unitCodeSnapshot;
+
+    @Column(name = "unit_name_snapshot", length = 80)
+    private String unitNameSnapshot;
+
+    @Column(name = "conversion_factor_snapshot", precision = 14, scale = 4)
+    private BigDecimal conversionFactorSnapshot;
 
     private BigDecimal unitPrice;
 
