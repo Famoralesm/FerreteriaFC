@@ -50,6 +50,12 @@ public class SupplierController {
         return ResponseEntity.ok(supplierResponse(supplierService.update(supplierId, request)));
     }
 
+    @DeleteMapping("/{supplierId}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long supplierId) {
+        supplierService.deactivate(supplierId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/products/{productId}")
     public ResponseEntity<List<ProductSupplierResponse>> listarProveedoresProducto(@PathVariable Long productId) {
         return ResponseEntity.ok(mapper.toListResponse(productSupplierService.getSuppliersByProduct(productId)));
