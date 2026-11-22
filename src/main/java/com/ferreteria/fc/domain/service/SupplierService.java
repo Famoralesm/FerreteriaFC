@@ -9,5 +9,6 @@ public interface SupplierService {
     Supplier create(SupplierRequest request);
     Supplier update(Long id, SupplierRequest request);
     Supplier get(Long id);
+    void deactivate(Long id);
     List<Supplier> getAll();
 }
