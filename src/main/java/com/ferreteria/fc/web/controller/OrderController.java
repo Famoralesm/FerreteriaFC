@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -76,6 +77,15 @@ public class OrderController {
             @PathVariable Long id,
             @RequestBody @Valid UpdateOrderRequest request) {
 
+        OrderResponse current = orderService.getById(id);
+        if (current.getStatus() == com.ferreteria.fc.domain.enums.OrderStatus.IN_ROUTE
+                && request.getItems() != null
+                && !sameItems(current, request)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Un pedido en ruta no permite agregar, eliminar ni modificar productos."
+            );
+        }
         return ResponseEntity.ok(orderService.updateOrder(id, request));
     }
 
@@ -91,6 +101,25 @@ public class OrderController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         orderService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    private boolean sameItems(OrderResponse current, UpdateOrderRequest request) {
+        var currentItems = current.getItems() == null ? List.<com.ferreteria.fc.domain.dto.response.OrderItemResponse>of() : current.getItems();
+        var requestedItems = request.getItems();
+        if (currentItems.size() != requestedItems.size()) return false;
+        for (int i = 0; i < currentItems.size(); i++) {
+            var before = currentItems.get(i);
+            var after = requestedItems.get(i);
+            if (!Objects.equals(before.getProductId(), after.getProductId())
+                    || !Objects.equals(before.getUnitId(), after.getUnitId())
+                    || before.getQuantity().compareTo(after.getQuantity()) != 0
+                    || (before.getUnitPrice() != null && after.getUnitPrice() != null
+                        && before.getUnitPrice().compareTo(after.getUnitPrice()) != 0)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @GetMapping("/latest")
