@@ -9,6 +9,9 @@ import com.ferreteria.fc.domain.service.ProductSupplierService;
 import com.ferreteria.fc.domain.service.SupplierService;
 import com.ferreteria.fc.persistence.entity.ProductSupplier;
 import com.ferreteria.fc.persistence.entity.Supplier;
+import com.ferreteria.fc.domain.repository.ProductSupplierRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +24,15 @@ public class SupplierController {
     private final ProductSupplierService productSupplierService;
     private final SupplierService supplierService;
     private final ProductSupplierMapper mapper;
+    private final ProductSupplierRepository productSupplierRepository;
 
     public SupplierController(ProductSupplierService productSupplierService,
-            SupplierService supplierService, ProductSupplierMapper mapper) {
+            SupplierService supplierService, ProductSupplierMapper mapper,
+            ProductSupplierRepository productSupplierRepository) {
         this.productSupplierService = productSupplierService;
         this.supplierService = supplierService;
         this.mapper = mapper;
+        this.productSupplierRepository = productSupplierRepository;
     }
 
     @GetMapping
@@ -71,6 +77,21 @@ public class SupplierController {
             @Valid @RequestBody ProductSupplierRequest request) {
         ProductSupplier result = productSupplierService.addSupplierToProduct(productId, request);
         return ResponseEntity.ok(mapper.toResponse(result));
+    }
+
+    @DeleteMapping("/{productId}/suppliers/{productSupplierId}")
+    public ResponseEntity<Void> quitarProveedorDeProducto(
+            @PathVariable Long productId,
+            @PathVariable Long productSupplierId) {
+        ProductSupplier association = productSupplierRepository.findById(productSupplierId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "La asociación proveedor-producto no existe."));
+        if (!association.getProduct().getId().equals(productId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "El proveedor no está asociado a este producto.");
+        }
+        productSupplierRepository.delete(association);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{productId}/suppliers/{productSupplierId}/select")
