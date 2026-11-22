@@ -1,4 +1,3 @@
-
 package com.ferreteria.fc.domain.repository;
 
 import com.ferreteria.fc.persistence.entity.ProductUnit;
@@ -18,13 +17,7 @@ public interface ProductUnitRepository
 
     Optional<ProductUnit> findByProductIdAndCode(Long productId, String code);
 
-    Optional<ProductUnit> findByIdAndProductId(
-            Long id,
-            Long productId
-    );
+    Optional<ProductUnit> findByIdAndProductId(Long id, Long productId);
 
-    boolean existsByProductIdAndCode(
-            Long productId,
-            String code
-    );
+    boolean existsByProductIdAndCode(Long productId, String code);
 }
