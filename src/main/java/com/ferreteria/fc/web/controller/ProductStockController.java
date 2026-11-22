@@ -65,7 +65,7 @@ public class ProductStockController {
         validarSucursalActiva(sucursalAutorizada);
 
         List<ProductStockResponse> response =
-                productStockRepository.findBySucursalId(sucursalAutorizada)
+                productStockRepository.findActiveProductsBySucursalId(sucursalAutorizada)
                         .stream()
                         .map(this::toResponse)
                         .toList();
