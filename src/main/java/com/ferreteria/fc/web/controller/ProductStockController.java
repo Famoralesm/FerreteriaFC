@@ -73,6 +73,25 @@ public class ProductStockController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/low-stock")
+    public ResponseEntity<List<ProductStockResponse>> getLowStockByStore(
+            @RequestParam(required = false) Long sucursalId,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+        Long sucursalAutorizada = resolverSucursalId(usuario, sucursalId);
+
+        validarSucursalActiva(sucursalAutorizada);
+
+        List<ProductStockResponse> response =
+                productStockRepository.findLowStockBySucursalId(sucursalAutorizada)
+                        .stream()
+                        .map(this::toResponse)
+                        .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/product/{productoId}")
     public ResponseEntity<List<ProductStockResponse>> getByProduct(
             @PathVariable Long productoId,
