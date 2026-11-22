@@ -18,13 +18,11 @@ import java.util.List;
 public class OrderMapper {
 
     public OrderResponse toResponse(Order order) {
-
-        if(order == null){
+        if (order == null) {
             return null;
         }
 
         return OrderResponse.builder()
-
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
                 .deliveryDate(order.getDeliveryDate())
@@ -39,31 +37,24 @@ public class OrderMapper {
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .statusChangedAt(order.getStatusChangedAt())
-
                 .createdBy(toUserResponse(order.getCreatedBy()))
-                .storeId(
-                        order.getStore() != null
-                                ? order.getStore().getId()
-                                : null
-                )
-
+                .storeId(order.getStore() != null ? order.getStore().getId() : null)
                 .items(toItemResponse(order.getItems()))
-
                 .build();
-
     }
-    public List<OrderResponse> toListResponse(List<Order> list){
-        List<OrderResponse> resp= new ArrayList<>();
-        if (list!=null){
+
+    public List<OrderResponse> toListResponse(List<Order> list) {
+        List<OrderResponse> response = new ArrayList<>();
+        if (list != null) {
             for (Order order : list) {
-                resp.add(this.toResponse(order));
+                response.add(toResponse(order));
             }
         }
-        return resp;
+        return response;
     }
-    private UserResponse toUserResponse(User user){
 
-        if(user == null){
+    private UserResponse toUserResponse(User user) {
+        if (user == null) {
             return null;
         }
 
@@ -73,38 +64,43 @@ public class OrderMapper {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
-
     }
 
-    private List<OrderItemResponse> toItemResponse(List<OrderItem> items){
-
+    private List<OrderItemResponse> toItemResponse(List<OrderItem> items) {
         return items.stream()
+                .map(item -> {
+                    BigDecimal factor = item.getConversionFactorSnapshot() != null
+                            ? item.getConversionFactorSnapshot()
+                            : BigDecimal.ONE;
+                    BigDecimal quantity = item.getQuantity() != null
+                            ? item.getQuantity()
+                            : BigDecimal.ZERO;
 
-                .map(item -> OrderItemResponse.builder()
-
-                        .id(item.getId())
-                        .productId(item.getProduct() == null ? null : item.getProduct().getId())
-                        .productName(item.getProductName())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(item.getTotalPrice())
-                        .wholesaleApplied(item.isWholesaleApplied())
-                        .pricingType(item.getPricingType())
-
-                        .build())
-
+                    return OrderItemResponse.builder()
+                            .id(item.getId())
+                            .productId(item.getProduct() == null ? null : item.getProduct().getId())
+                            .productName(item.getProductName())
+                            .quantity(quantity)
+                            .unitId(item.getUnitIdSnapshot())
+                            .unitCode(item.getUnitCodeSnapshot())
+                            .unitName(item.getUnitNameSnapshot())
+                            .conversionFactor(factor)
+                            .quantityInBaseUnit(quantity.multiply(factor))
+                            .unitPrice(item.getUnitPrice())
+                            .totalPrice(item.getTotalPrice())
+                            .wholesaleApplied(item.isWholesaleApplied())
+                            .pricingType(item.getPricingType())
+                            .build();
+                })
                 .toList();
-
     }
 
     public Order toEntity(UpdateOrderRequest request) {
-
-        if(request == null){
+        if (request == null) {
             return null;
         }
 
         Order order = new Order();
-
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
@@ -117,28 +113,21 @@ public class OrderMapper {
                 .map(item -> OrderItem.builder()
                         .productName(item.getProductName())
                         .quantity(item.getQuantity())
+                        .unitCodeSnapshot("BASE")
+                        .unitNameSnapshot("Unidad base")
+                        .conversionFactorSnapshot(BigDecimal.ONE)
                         .unitPrice(item.getUnitPrice())
-                        .totalPrice(
-                                item.getUnitPrice()
-                                        .multiply(item.getQuantity())
-                        )
+                        .totalPrice(item.getUnitPrice().multiply(item.getQuantity()))
                         .build())
                 .toList();
 
-        items.forEach(i -> i.setOrder(order));
-
+        items.forEach(item -> item.setOrder(order));
         order.setItems(items);
-
-        order.setTotalAmount(
-                items.stream()
-                        .map(OrderItem::getTotalPrice)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        );
-
+        order.setTotalAmount(items.stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
 
         return order;
     }
-
-
 }
