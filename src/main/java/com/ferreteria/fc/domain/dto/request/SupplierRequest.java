@@ -4,6 +4,7 @@ import com.ferreteria.fc.persistence.entity.Ciudad;
 import com.ferreteria.fc.persistence.entity.Comuna;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
@@ -22,8 +23,13 @@ public class SupplierRequest {
     @NotBlank
     private String giro;
 
+    @NotBlank
     private String direccion;
+
+    @NotNull
     private Comuna comuna;
+
+    @NotNull
     private Ciudad ciudad;
 
     @NotBlank
