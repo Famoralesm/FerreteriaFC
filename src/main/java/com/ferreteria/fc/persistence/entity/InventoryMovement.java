@@ -38,7 +38,8 @@ public class InventoryMovement {
     @Column(name = "movement_type", nullable = false, length = 20)
     private MovementType tipoMovimiento;
 
-    @Column(nullable = false, precision = 14, scale = 4)
+    // La base de datos conserva el nombre histórico "quantity".
+    @Column(name = "quantity", nullable = false, precision = 14, scale = 4)
     private BigDecimal cantidad;
 
     @Column(name = "stock_before", nullable = false, precision = 14, scale = 4)
