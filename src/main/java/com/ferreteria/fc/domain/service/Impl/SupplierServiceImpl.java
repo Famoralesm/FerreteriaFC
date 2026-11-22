@@ -44,6 +44,7 @@ public class SupplierServiceImpl implements SupplierService {
         String rut = normalizarRut(request.getRut());
         if (rut != null && supplierRepository.existsByRut(rut))
             throw new IllegalStateException("Ya existe un proveedor con RUT " + rut);
+        validarCiudadComuna(request.getCiudad(), request.getComuna());
         return supplierRepository.save(Supplier.builder().rut(rut).nombre(request.getNombre().trim())
                 .razonSocial(request.getRazonSocial()).giro(request.getGiro())
                 .direccion(request.getDireccion()).comuna(resolverComuna(request.getComuna()))
@@ -57,6 +58,7 @@ public class SupplierServiceImpl implements SupplierService {
         String rut = normalizarRut(request.getRut());
         if (rut != null && supplierRepository.findByRut(rut).filter(s -> !s.getId().equals(id)).isPresent())
             throw new IllegalStateException("El RUT ya está registrado por otro proveedor");
+        validarCiudadComuna(request.getCiudad(), request.getComuna());
         supplier.setRut(rut);
         supplier.setNombre(request.getNombre().trim());
         supplier.setRazonSocial(request.getRazonSocial());
@@ -75,6 +77,24 @@ public class SupplierServiceImpl implements SupplierService {
     public Supplier get(Long id) {
         return supplierRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado: " + id));
+    }
+
+    @Override
+    public void deactivate(Long id) {
+        Supplier supplier = get(id);
+        supplier.setActivo(false);
+        supplierRepository.save(supplier);
+    }
+
+    private void validarCiudadComuna(Ciudad ciudad, Comuna comuna) {
+        if (ciudad == null || ciudad.getId() == null || comuna == null || comuna.getId() == null) {
+            throw new IllegalArgumentException("Debe seleccionar ciudad y comuna");
+        }
+        Comuna comunaRegistrada = comunaRepository.findById(comuna.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Comuna no encontrada"));
+        if (!comunaRegistrada.getCiudad().getId().equals(ciudad.getId())) {
+            throw new IllegalArgumentException("La comuna seleccionada no pertenece a la ciudad indicada");
+        }
     }
 
     private String normalizarRut(String rut) {
