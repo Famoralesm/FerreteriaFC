@@ -36,4 +36,6 @@ public class ProductStockResponse {
     private Boolean bajoStock;
 
     private LocalDateTime fechaActualizacion;
+
+    private Boolean inventarioInicialRegistrado;
 }
