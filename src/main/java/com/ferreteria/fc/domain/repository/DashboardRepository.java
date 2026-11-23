@@ -15,7 +15,8 @@ public interface DashboardRepository extends JpaRepository<Order, Long> {
     @Query(value = """
             SELECT COALESCE(SUM(total_amount), 0)
             FROM orders
-            WHERE created_at >= CURRENT_DATE
+            WHERE payment_status = 'PAID'
+              AND created_at >= CURRENT_DATE
               AND created_at < CURRENT_DATE + INTERVAL '1 day'
             """, nativeQuery = true)
     BigDecimal getVentasHoy();
