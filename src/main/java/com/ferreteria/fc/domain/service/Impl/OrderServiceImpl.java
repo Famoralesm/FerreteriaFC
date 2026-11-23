@@ -254,7 +254,10 @@ public class OrderServiceImpl implements OrderService {
         order.setNotes(request.getNotes());
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
 
-        if (request.getItems() != null) {
+        // Si las líneas del pedido no cambiaron, se conservan tal cual.
+        // Esto permite avanzar a EN_RUTA pedidos históricos que contienen
+        // productos posteriormente desactivados, sin reconstruirlos ni revalidarlos.
+        if (request.getItems() != null && !sameItems(order, request.getItems())) {
             order.getItems().clear();
             List<OrderItem> items = request.getItems().stream()
                     .map(item -> buildItem(item, order)).toList();
@@ -263,6 +266,34 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    private boolean sameItems(Order order, List<OrderItemRequest> requestedItems) {
+        if (order.getItems() == null || requestedItems == null
+                || order.getItems().size() != requestedItems.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < order.getItems().size(); i++) {
+            OrderItem current = order.getItems().get(i);
+            OrderItemRequest requested = requestedItems.get(i);
+
+            if (!Objects.equals(
+                    current.getProduct() != null ? current.getProduct().getId() : null,
+                    requested.getProductId())
+                    || !Objects.equals(current.getUnitIdSnapshot(), requested.getUnitId())
+                    || current.getQuantity() == null
+                    || requested.getQuantity() == null
+                    || current.getQuantity().compareTo(requested.getQuantity()) != 0) {
+                return false;
+            }
+
+            if (requested.getProductId() == null
+                    && !Objects.equals(current.getProductName(), requested.getProductName())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request) {
