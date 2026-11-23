@@ -15,9 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import jakarta.validation.Valid;
+
 import java.util.List;
-import java.util.Optional;
 import java.util.Objects;
 
 @RestController
@@ -28,38 +27,24 @@ public class OrderController {
     private final OrderService orderService;
     private final UserService userService;
 
-    public OrderController(OrderService orderService,
-                           UserService userService) {
+    public OrderController(OrderService orderService, UserService userService) {
         this.orderService = orderService;
         this.userService = userService;
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(
-            @RequestBody @Valid CreateOrderRequest request) {
-
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null ||
-                !authentication.isAuthenticated() ||
-                "anonymousUser".equals(authentication.getPrincipal())) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Debes iniciar sesión para crear un pedido"
-            );
+    public ResponseEntity<OrderResponse> createOrder(@RequestBody @Valid CreateOrderRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión para crear un pedido");
         }
 
         User user = userService.getOptionalByEmail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "No se pudo identificar al usuario autenticado"
-                ));
+                        HttpStatus.UNAUTHORIZED, "No se pudo identificar al usuario autenticado"));
 
-        OrderResponse response = orderService.createOrder(request, user);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(orderService.createOrder(request, user));
     }
 
     @GetMapping
@@ -73,39 +58,25 @@ public class OrderController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderResponse> update(
-            @PathVariable Long id,
-            @RequestBody @Valid UpdateOrderRequest request) {
-
+    public ResponseEntity<OrderResponse> update(@PathVariable Long id, @RequestBody @Valid UpdateOrderRequest request) {
         OrderResponse current = orderService.getById(id);
         if (current.getStatus() == com.ferreteria.fc.domain.enums.OrderStatus.IN_ROUTE
-                && request.getItems() != null
-                && !sameItems(current, request)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Un pedido en ruta no permite agregar, eliminar ni modificar productos."
-            );
+                && request.getItems() != null && !sameItems(current, request)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Un pedido en ruta no permite agregar, eliminar ni modificar productos.");
         }
         return ResponseEntity.ok(orderService.updateOrder(id, request));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<OrderResponse> patch(
-            @PathVariable Long id,
-            @RequestBody UpdatePatchOrderRequest request) {
-
+    public ResponseEntity<OrderResponse> patch(@PathVariable Long id, @RequestBody UpdatePatchOrderRequest request) {
         return ResponseEntity.ok(orderService.patchOrder(id, request));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        orderService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-
     private boolean sameItems(OrderResponse current, UpdateOrderRequest request) {
-        var currentItems = current.getItems() == null ? List.<com.ferreteria.fc.domain.dto.response.OrderItemResponse>of() : current.getItems();
+        var currentItems = current.getItems() == null
+                ? List.<com.ferreteria.fc.domain.dto.response.OrderItemResponse>of()
+                : current.getItems();
         var requestedItems = request.getItems();
         if (currentItems.size() != requestedItems.size()) return false;
         for (int i = 0; i < currentItems.size(); i++) {
@@ -123,16 +94,12 @@ public class OrderController {
     }
 
     @GetMapping("/latest")
-    public List<OrderSummaryResponse> latestOrders(
-            @RequestParam Long storeId
-    ) {
+    public List<OrderSummaryResponse> latestOrders(@RequestParam Long storeId) {
         return orderService.findLatestOrders(storeId);
     }
 
     @GetMapping("/all")
-    public List<OrderSummaryResponse> findAll(
-            @RequestParam Long storeId
-    ) {
+    public List<OrderSummaryResponse> findAll(@RequestParam Long storeId) {
         return orderService.findAllSummary(storeId);
     }
 }
