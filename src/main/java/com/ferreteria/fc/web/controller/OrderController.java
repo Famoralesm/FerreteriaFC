@@ -65,12 +65,30 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Un pedido en ruta no permite agregar, eliminar ni modificar productos.");
         }
-        return ResponseEntity.ok(orderService.updateOrder(id, request));
+        return ResponseEntity.ok(orderService.updateOrder(id, request, authenticatedUser()));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<OrderResponse> patch(@PathVariable Long id, @RequestBody UpdatePatchOrderRequest request) {
-        return ResponseEntity.ok(orderService.patchOrder(id, request));
+        return ResponseEntity.ok(orderService.patchOrder(id, request, authenticatedUser()));
+    }
+
+    @PostMapping("/{id}/payment/confirm")
+    public ResponseEntity<OrderResponse> confirmPayment(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.confirmPayment(id, authenticatedUser()));
+    }
+
+    private User authenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Debes iniciar sesión para realizar esta operación");
+        }
+
+        return userService.getOptionalByEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "No se pudo identificar al usuario autenticado"));
     }
 
     private boolean sameItems(OrderResponse current, UpdateOrderRequest request) {
