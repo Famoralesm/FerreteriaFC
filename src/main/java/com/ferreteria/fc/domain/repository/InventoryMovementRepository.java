@@ -23,6 +23,12 @@ public interface InventoryMovementRepository
             Long referenciaId
     );
 
+    boolean existsByProductoIdAndSucursalIdAndTipoMovimiento(
+            Long productoId,
+            Long sucursalId,
+            MovementType tipoMovimiento
+    );
+
     boolean existsByProductoIdAndSucursalId(Long productoId, Long sucursalId);
 
     List<InventoryMovement> findByTipoReferenciaAndReferenciaId(
