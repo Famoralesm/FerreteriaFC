@@ -13,8 +13,9 @@ public interface OrderService {
     OrderResponse createOrder(CreateOrderRequest request, User user);
     List<OrderResponse> getAll();
     OrderResponse getById(Long id);
-    OrderResponse updateOrder(Long id, UpdateOrderRequest order);
-    OrderResponse patchOrder(Long id, UpdatePatchOrderRequest order);
+    OrderResponse updateOrder(Long id, UpdateOrderRequest order, User user);
+    OrderResponse patchOrder(Long id, UpdatePatchOrderRequest order, User user);
+    OrderResponse confirmPayment(Long id, User user);
     List<OrderSummaryResponse> findLatestOrders(Long storeId);
     List<OrderSummaryResponse> findAllSummary(Long storeId);
 }
