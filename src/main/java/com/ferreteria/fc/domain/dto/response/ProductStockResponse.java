@@ -1,4 +1,3 @@
-
 package com.ferreteria.fc.domain.dto.response;
 
 import lombok.*;
@@ -38,4 +37,6 @@ public class ProductStockResponse {
     private LocalDateTime fechaActualizacion;
 
     private Boolean inventarioInicialRegistrado;
+
+    private Boolean tieneMovimientos;
 }
