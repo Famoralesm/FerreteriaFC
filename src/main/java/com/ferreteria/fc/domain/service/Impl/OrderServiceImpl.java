@@ -9,6 +9,7 @@ import com.ferreteria.fc.domain.dto.response.OrderResponse;
 import com.ferreteria.fc.domain.dto.response.OrderSummaryResponse;
 import com.ferreteria.fc.domain.dto.utils.WazeUtils;
 import com.ferreteria.fc.domain.enums.OrderStatus;
+import com.ferreteria.fc.domain.enums.PaymentStatus;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.OrderRepository;
 import com.ferreteria.fc.domain.repository.ProductRepository;
@@ -63,6 +64,7 @@ public class OrderServiceImpl implements OrderService {
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
         order.setPaymentMethod(request.getPaymentMethod());
+        order.setPaymentStatus(PaymentStatus.PENDING);
         order.setStatus(OrderStatus.CREATED);
         order.setStatusChangedAt(LocalDateTime.now());
         order.setNotes(request.getNotes());
@@ -236,7 +238,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse updateOrder(Long id, UpdateOrderRequest request) {
+    public OrderResponse updateOrder(Long id, UpdateOrderRequest request, User user) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
 
@@ -244,11 +246,22 @@ public class OrderServiceImpl implements OrderService {
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
         order.setDeliveryDate(request.getDeliveryDate());
-        order.setPaymentMethod(request.getPaymentMethod());
+
+        if (request.getPaymentMethod() != null
+                && order.getPaymentStatus() != PaymentStatus.PENDING
+                && request.getPaymentMethod() != order.getPaymentMethod()) {
+            throw new IllegalArgumentException(
+                    "No se puede cambiar el método de pago después de registrar el pago"
+            );
+        }
+        if (request.getPaymentMethod() != null) {
+            order.setPaymentMethod(request.getPaymentMethod());
+        }
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
+            reversePaymentIfRequired(order, user, request.getStatus());
         }
 
         order.setNotes(request.getNotes());
@@ -296,7 +309,7 @@ public class OrderServiceImpl implements OrderService {
         return true;
     }
 
-    public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request) {
+    public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request, User user) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
@@ -307,16 +320,62 @@ public class OrderServiceImpl implements OrderService {
             order.setAddress(request.getAddress());
             order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
         }
+        if (request.getPaymentMethod() != null
+                && order.getPaymentStatus() != PaymentStatus.PENDING
+                && request.getPaymentMethod() != order.getPaymentMethod()) {
+            throw new IllegalArgumentException(
+                    "No se puede cambiar el método de pago después de registrar el pago"
+            );
+        }
         if (request.getPaymentMethod() != null) order.setPaymentMethod(request.getPaymentMethod());
         if (request.getNotes() != null) order.setNotes(request.getNotes());
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
+            reversePaymentIfRequired(order, user, request.getStatus());
         }
 
         return orderMapper.toResponse(orderRepository.save(order));
     }
+    @Override
+    public OrderResponse confirmPayment(Long id, User user) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
+
+        if (order.getPaymentStatus() != PaymentStatus.PENDING) {
+            throw new IllegalStateException("El pago del pedido ya fue procesado");
+        }
+
+        if (order.getStatus() == OrderStatus.CANCELED
+                || order.getStatus() == OrderStatus.REJECTED) {
+            throw new IllegalStateException("No se puede confirmar el pago de un pedido cancelado o rechazado");
+        }
+
+        if (order.getTotalAmount() == null
+                || order.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("El total del pedido debe ser mayor que cero para confirmar el pago");
+        }
+
+        order.setPaymentStatus(PaymentStatus.PAID);
+        order.setPaymentReceivedAt(LocalDateTime.now());
+        order.setPaymentReceivedBy(user);
+
+        return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    private void reversePaymentIfRequired(Order order, User user, OrderStatus newStatus) {
+        boolean terminalStatus = newStatus == OrderStatus.CANCELED
+                || newStatus == OrderStatus.REJECTED;
+
+        if (terminalStatus && order.getPaymentStatus() == PaymentStatus.PAID) {
+            order.setPaymentStatus(PaymentStatus.REVERSED);
+            order.setPaymentReversedAt(LocalDateTime.now());
+            order.setPaymentReversedBy(user);
+            order.setPaymentReversalReason(newStatus.name());
+        }
+    }
+
     @Override
     public List<OrderSummaryResponse> findLatestOrders(Long storeId) {
         return orderRepository.findLatestOrders(storeId, PageRequest.of(0, 10));
