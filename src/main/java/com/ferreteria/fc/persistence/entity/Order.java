@@ -53,7 +53,7 @@ public class Order {
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false, length = 20)
+    @Column(name = "payment_status", nullable = false, length = 20, columnDefinition = "varchar(20) default 'PENDING'")
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @Column(name = "payment_received_at")
