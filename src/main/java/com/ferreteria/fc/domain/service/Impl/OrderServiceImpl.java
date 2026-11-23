@@ -267,6 +267,14 @@ public class OrderServiceImpl implements OrderService {
         order.setNotes(request.getNotes());
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
 
+        if (order.getPaymentStatus() != PaymentStatus.PENDING
+                && request.getItems() != null
+                && !sameItems(order, request.getItems())) {
+            throw new IllegalStateException(
+                    "No se pueden modificar los productos ni el total después de registrar o reversar el pago"
+            );
+        }
+
         // Si las líneas del pedido no cambiaron, se conservan tal cual.
         // Esto permite avanzar a EN_RUTA pedidos históricos que contienen
         // productos posteriormente desactivados, sin reconstruirlos ni revalidarlos.
