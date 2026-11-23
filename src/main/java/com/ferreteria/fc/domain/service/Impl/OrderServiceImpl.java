@@ -317,11 +317,6 @@ public class OrderServiceImpl implements OrderService {
 
         return orderMapper.toResponse(orderRepository.save(order));
     }
-
-    public void delete(Long id) {
-        orderRepository.deleteById(id);
-    }
-
     @Override
     public List<OrderSummaryResponse> findLatestOrders(Long storeId) {
         return orderRepository.findLatestOrders(storeId, PageRequest.of(0, 10));
