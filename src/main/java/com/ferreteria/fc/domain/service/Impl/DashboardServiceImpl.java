@@ -1,9 +1,14 @@
 package com.ferreteria.fc.domain.service.Impl;
+
+import com.ferreteria.fc.domain.dto.response.DashboardOrderStatusResponse;
+import com.ferreteria.fc.domain.dto.response.DashboardProductStatusResponse;
 import com.ferreteria.fc.domain.dto.response.DashboardResponse;
 import com.ferreteria.fc.domain.repository.DashboardRepository;
 import com.ferreteria.fc.domain.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -13,14 +18,25 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public DashboardResponse getDashboard() {
-
         return DashboardResponse.builder()
                 .ventasHoy(dashboardRepository.getVentasHoy())
                 .pedidosPendientes(dashboardRepository.getPedidosPendientes())
                 .clientes(dashboardRepository.getClientes())
                 .productos(dashboardRepository.getProductos())
                 .build();
-
     }
 
+    @Override
+    public DashboardOrderStatusResponse getOrdersByStatusAndPeriod(
+            Long storeId,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        return dashboardRepository.getOrdersByStatusAndPeriod(storeId, from, to);
+    }
+
+    @Override
+    public DashboardProductStatusResponse getProductStatusByStore(Long storeId) {
+        return dashboardRepository.getProductStatusByStore(storeId);
+    }
 }
