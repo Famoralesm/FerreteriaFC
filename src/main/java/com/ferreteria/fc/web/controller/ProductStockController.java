@@ -115,7 +115,7 @@ public class ProductStockController {
 
     /**
      * Registra el conteo físico de apertura una sola vez por producto y sucursal.
-     * Reemplaza cualquier saldo de prueba sin historial y deja trazabilidad del saldo anterior.
+     * No permite reemplazar saldos cuando ya existen movimientos operacionales.
      */
     @PostMapping("/initialization")
     @Transactional
@@ -146,11 +146,11 @@ public class ProductStockController {
                         "No existe registro de stock para el producto y sucursal seleccionados"
                 ));
 
-        if (movementRepository.existsByProductoIdAndSucursalIdAndTipoMovimiento(
-                producto.getId(), sucursalId, MovementType.INITIAL)) {
+        if (movementRepository.existsByProductoIdAndSucursalId(
+                producto.getId(), sucursalId)) {
             throw new IllegalStateException(
-                    "El inventario inicial ya fue registrado para este producto y sucursal. "
-                            + "Para corregir existencias, utiliza un ajuste de inventario."
+                    "El producto ya tiene movimientos de inventario en esta sucursal. "
+                            + "No se puede registrar un stock inicial; utiliza un ajuste de inventario."
             );
         }
 
@@ -247,6 +247,11 @@ public class ProductStockController {
                 .inventarioInicialRegistrado(
                         movementRepository.existsByProductoIdAndSucursalIdAndTipoMovimiento(
                                 producto.getId(), sucursal.getId(), MovementType.INITIAL
+                        )
+                )
+                .tieneMovimientos(
+                        movementRepository.existsByProductoIdAndSucursalId(
+                                producto.getId(), sucursal.getId()
                         )
                 )
                 .build();
