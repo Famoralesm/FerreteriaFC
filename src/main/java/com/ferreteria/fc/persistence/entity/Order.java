@@ -4,6 +4,7 @@ package com.ferreteria.fc.persistence.entity;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.ferreteria.fc.domain.enums.OrderStatus;
 import com.ferreteria.fc.domain.enums.PaymentMethod;
+import com.ferreteria.fc.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -50,6 +51,27 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Column(name = "payment_received_at")
+    private LocalDateTime paymentReceivedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_received_by")
+    private User paymentReceivedBy;
+
+    @Column(name = "payment_reversed_at")
+    private LocalDateTime paymentReversedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_reversed_by")
+    private User paymentReversedBy;
+
+    @Column(name = "payment_reversal_reason", length = 100)
+    private String paymentReversalReason;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
