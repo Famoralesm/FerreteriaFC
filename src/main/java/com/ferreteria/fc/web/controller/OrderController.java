@@ -75,7 +75,11 @@ public class OrderController {
 
     @PostMapping("/{id}/payment/confirm")
     public ResponseEntity<OrderResponse> confirmPayment(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.confirmPayment(id, authenticatedUser()));
+        try {
+            return ResponseEntity.ok(orderService.confirmPayment(id, authenticatedUser()));
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
+        }
     }
 
     private User authenticatedUser() {
