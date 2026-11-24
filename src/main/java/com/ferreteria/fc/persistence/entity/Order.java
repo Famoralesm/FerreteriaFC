@@ -54,6 +54,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20, columnDefinition = "varchar(20) default 'PENDING'")
+    @Builder.Default
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @Column(name = "payment_received_at")
