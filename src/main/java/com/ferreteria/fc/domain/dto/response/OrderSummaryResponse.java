@@ -19,4 +19,5 @@ public class OrderSummaryResponse {
     private BigDecimal total;
     private OrderStatus estado;
     private LocalDateTime statusChangedAt;
+    private String orderNumber;
 }
