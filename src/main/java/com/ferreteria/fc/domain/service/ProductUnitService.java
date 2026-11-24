@@ -11,4 +11,5 @@ public interface ProductUnitService {
     ProductUnit update(Long productId, Long unitId, ProductUnitRequest request);
     void deactivate(Long productId, Long unitId);
     void activate(Long productId, Long unitId);
+    void delete(Long productId, Long unitId);
 }

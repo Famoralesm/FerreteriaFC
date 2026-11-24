@@ -20,4 +20,9 @@ public interface ProductUnitRepository
     Optional<ProductUnit> findByIdAndProductId(Long id, Long productId);
 
     boolean existsByProductIdAndCode(Long productId, String code);
+
+    boolean existsByCode(String code);
+
+    @org.springframework.data.jpa.repository.Query("select count(i) from OrderItem i where i.unitIdSnapshot = :unitId")
+    long countOrderItemSnapshotsByUnitId(@org.springframework.data.repository.query.Param("unitId") Long unitId);
 }

@@ -76,6 +76,13 @@ public class ProductUnitController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{unitId}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long productId, @PathVariable Long unitId, Authentication authentication) {
+        validarAdmin(authentication);
+        productUnitService.delete(productId, unitId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{unitId}/activate")
     public ResponseEntity<Void> activar(
             @PathVariable Long productId,

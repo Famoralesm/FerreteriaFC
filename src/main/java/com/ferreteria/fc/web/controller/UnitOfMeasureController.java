@@ -4,6 +4,7 @@ import com.ferreteria.fc.domain.dto.request.UnitOfMeasureRequest;
 import com.ferreteria.fc.domain.dto.response.UnitOfMeasureResponse;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
+import com.ferreteria.fc.domain.repository.ProductUnitRepository;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import com.ferreteria.fc.persistence.entity.User;
@@ -20,10 +21,12 @@ import java.util.Locale;
 @CrossOrigin(origins = "http://localhost:4200")
 public class UnitOfMeasureController {
     private final UnitOfMeasureRepository repository;
+    private final ProductUnitRepository productUnitRepository;
     private final UserService userService;
 
-    public UnitOfMeasureController(UnitOfMeasureRepository repository, UserService userService) {
+    public UnitOfMeasureController(UnitOfMeasureRepository repository, ProductUnitRepository productUnitRepository, UserService userService) {
         this.repository = repository;
+        this.productUnitRepository = productUnitRepository;
         this.userService = userService;
     }
 
@@ -62,6 +65,18 @@ public class UnitOfMeasureController {
         UnitOfMeasure unit = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Unidad no encontrada: " + id));
         unit.setActive(active);
         return response(repository.save(unit));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
+        validateAdmin(auth);
+        UnitOfMeasure unit = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unidad no encontrada: " + id));
+        if (productUnitRepository.existsByCode(unit.getCode())) {
+            throw new IllegalStateException("No se puede eliminar la unidad porque está utilizada en presentaciones de productos. Primero corrige esas presentaciones.");
+        }
+        repository.delete(unit);
+        return ResponseEntity.noContent().build();
     }
 
     private void validateAdmin(Authentication auth) {

@@ -88,6 +88,15 @@ public class ProductUnitServiceImpl implements ProductUnitService {
         productUnitRepository.save(unit);
     }
 
+    @Override
+    public void delete(Long productId, Long unitId) {
+        ProductUnit unit = obtenerUnidad(productId, unitId);
+        if (productUnitRepository.countOrderItemSnapshotsByUnitId(unitId) > 0) {
+            throw new IllegalStateException("No se puede eliminar esta presentación porque ya forma parte de pedidos históricos. Puedes desactivarla para impedir nuevas ventas.");
+        }
+        productUnitRepository.delete(unit);
+    }
+
     private Product obtenerProducto(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException(
