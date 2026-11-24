@@ -36,6 +36,11 @@ public class ProductResponse {
 
     private String unit;
 
+    private Long baseUnitId;
+    private String baseUnitCode;
+    private String baseUnitName;
+    private String baseUnitSymbol;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

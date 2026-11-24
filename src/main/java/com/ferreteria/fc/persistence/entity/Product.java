@@ -64,6 +64,10 @@ public class Product {
     @Column(length = 50)
     private String unit;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "base_unit_id")
+    private UnitOfMeasure baseUnit;
+
     @OneToMany(
             mappedBy = "product",
             cascade = CascadeType.ALL,

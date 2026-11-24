@@ -29,6 +29,10 @@ public class ProductMapper {
                 .category(product.getCategory())
                 .brand(product.getBrand())
                 .unit(product.getUnit())
+                .baseUnitId(product.getBaseUnit() == null ? null : product.getBaseUnit().getId())
+                .baseUnitCode(product.getBaseUnit() == null ? null : product.getBaseUnit().getCode())
+                .baseUnitName(product.getBaseUnit() == null ? null : product.getBaseUnit().getName())
+                .baseUnitSymbol(product.getBaseUnit() == null ? null : product.getBaseUnit().getSymbol())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .imageUrl(
