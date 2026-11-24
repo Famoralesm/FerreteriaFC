@@ -29,8 +29,6 @@ public interface ProductRepository
 
     long countByImagePath(String imagePath);
 
-    boolean existsByBaseUnitId(Long baseUnitId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);

@@ -6,10 +6,6 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.service.ProductService;
-import com.ferreteria.fc.domain.repository.ProductRepository;
-import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
-import com.ferreteria.fc.persistence.entity.Product;
-import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
@@ -30,18 +26,13 @@ public class ProductController {
     private final ProductService productService;
     private final ProductMapper productMapper;
     private final UserService userService;
-    private final ProductRepository productRepository;
-    private final UnitOfMeasureRepository unitOfMeasureRepository;
 
     public ProductController(
-            ProductService productService, ProductMapper productMapper, UserService userService,
-            ProductRepository productRepository, UnitOfMeasureRepository unitOfMeasureRepository
+            ProductService productService, ProductMapper productMapper, UserService userService
     ) {
         this.productService = productService;
         this.productMapper = productMapper;
         this.userService = userService;
-        this.productRepository = productRepository;
-        this.unitOfMeasureRepository = unitOfMeasureRepository;
     }
 
     @PostMapping
@@ -95,29 +86,6 @@ public class ProductController {
                 productService.updateProduct(id, request)
         );
     }
-
-    @PatchMapping("/{id}/base-unit")
-    public ResponseEntity<ProductResponse> setBaseUnit(
-            @PathVariable Long id,
-            @RequestBody BaseUnitAssignmentRequest request,
-            Authentication authentication
-    ) {
-        User user = obtenerUsuario(authentication);
-        if (user.getRole() != Role.ADMIN) {
-            throw new org.springframework.security.access.AccessDeniedException("Solo un administrador puede cambiar la unidad base");
-        }
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado: " + id));
-        UnitOfMeasure unit = unitOfMeasureRepository.findById(request.unitOfMeasureId())
-                .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada"));
-        if (!Boolean.TRUE.equals(unit.getActive())) {
-            throw new IllegalStateException("No se puede asignar una unidad de medida inactiva");
-        }
-        product.setBaseUnit(unit);
-        return ResponseEntity.ok(productMapper.toResponse(productRepository.save(product)));
-    }
-
-    public record BaseUnitAssignmentRequest(Long unitOfMeasureId) {}
 
     @PatchMapping("/{id}")
     public ResponseEntity<ProductResponse> patch(

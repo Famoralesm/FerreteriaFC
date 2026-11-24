@@ -4,6 +4,7 @@ import com.ferreteria.fc.domain.dto.request.UnitOfMeasureRequest;
 import com.ferreteria.fc.domain.dto.response.UnitOfMeasureResponse;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
+import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import com.ferreteria.fc.persistence.entity.User;
@@ -21,10 +22,12 @@ import java.util.Locale;
 public class UnitOfMeasureController {
     private final UnitOfMeasureRepository repository;
     private final UserService userService;
+    private final ProductRepository productRepository;
 
-    public UnitOfMeasureController(UnitOfMeasureRepository repository, UserService userService) {
+    public UnitOfMeasureController(UnitOfMeasureRepository repository, UserService userService, ProductRepository productRepository) {
         this.repository = repository;
         this.userService = userService;
+        this.productRepository = productRepository;
     }
 
     @GetMapping
@@ -60,6 +63,9 @@ public class UnitOfMeasureController {
     public UnitOfMeasureResponse setActive(@PathVariable Long id, @RequestParam boolean active, Authentication auth) {
         validateAdmin(auth);
         UnitOfMeasure unit = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Unidad no encontrada: " + id));
+        if (!active && productRepository.existsByBaseUnitId(id)) {
+            throw new IllegalStateException("No se puede desactivar una unidad que está asignada como unidad base de un producto");
+        }
         unit.setActive(active);
         return response(repository.save(unit));
     }
