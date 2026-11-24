@@ -10,4 +10,5 @@ public interface ProductUnitService {
     ProductUnit create(Long productId, ProductUnitRequest request);
     ProductUnit update(Long productId, Long unitId, ProductUnitRequest request);
     void deactivate(Long productId, Long unitId);
+    void activate(Long productId, Long unitId);
 }
