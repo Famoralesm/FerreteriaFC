@@ -76,6 +76,17 @@ public class ProductUnitController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{unitId}/activate")
+    public ResponseEntity<Void> activar(
+            @PathVariable Long productId,
+            @PathVariable Long unitId,
+            Authentication authentication
+    ) {
+        validarAdmin(authentication);
+        productUnitService.activate(productId, unitId);
+        return ResponseEntity.noContent().build();
+    }
+
     private void validarAdmin(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new IllegalStateException("No existe un usuario autenticado");
