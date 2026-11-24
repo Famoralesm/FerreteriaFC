@@ -81,6 +81,13 @@ public class ProductUnitServiceImpl implements ProductUnitService {
         productUnitRepository.save(unit);
     }
 
+    @Override
+    public void activate(Long productId, Long unitId) {
+        ProductUnit unit = obtenerUnidad(productId, unitId);
+        unit.setActive(true);
+        productUnitRepository.save(unit);
+    }
+
     private Product obtenerProducto(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException(
