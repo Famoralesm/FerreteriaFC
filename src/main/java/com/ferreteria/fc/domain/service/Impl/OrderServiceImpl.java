@@ -149,6 +149,10 @@ public class OrderServiceImpl implements OrderService {
                 );
             }
 
+            if (product.getBaseUnit() == null) {
+                throw new IllegalArgumentException("Debes definir la unidad base del producto " + product.getName() + " en Productos → Presentaciones antes de venderlo.");
+            }
+
             productName = product.getName();
             unitPrice = product.getPrice();
 
@@ -178,14 +182,21 @@ public class OrderServiceImpl implements OrderService {
                     ? selectedUnit.getConversionFactor()
                     : BigDecimal.ONE;
             BigDecimal quantityInBaseUnit = request.getQuantity().multiply(conversionFactor);
+            BigDecimal minimum = product.getMinimumSaleQuantity() != null ? product.getMinimumSaleQuantity() : BigDecimal.ONE;
+            BigDecimal increment = product.getSaleQuantityIncrement() != null ? product.getSaleQuantityIncrement() : BigDecimal.ONE;
+            if (quantityInBaseUnit.compareTo(minimum) < 0) {
+                throw new IllegalArgumentException("La cantidad mínima de venta para " + product.getName() + " es " + minimum + " " + product.getBaseUnit().getSymbol() + ".");
+            }
+            if (increment.compareTo(BigDecimal.ZERO) <= 0
+                    || quantityInBaseUnit.subtract(minimum).remainder(increment).compareTo(BigDecimal.ZERO) != 0) {
+                throw new IllegalArgumentException("La cantidad debe respetar incrementos de " + increment + " " + product.getBaseUnit().getSymbol() + ", desde un mínimo de " + minimum + ".");
+            }
 
             // El umbral mayorista siempre se evalúa en la unidad base del producto,
             // independientemente de si se vende por unidad, caja, pack u otra presentación.
             if (product.getWholesalePrice() != null
                     && product.getWholesaleMinQuantity() != null
-                    && quantityInBaseUnit.compareTo(
-                            BigDecimal.valueOf(product.getWholesaleMinQuantity())
-                    ) >= 0) {
+                    && quantityInBaseUnit.compareTo(product.getWholesaleMinQuantity()) >= 0) {
                 unitPrice = product.getWholesalePrice();
                 wholesale = true;
                 pricingType = "WHOLESALE";
@@ -219,8 +230,8 @@ public class OrderServiceImpl implements OrderService {
                 : (product != null ? "BASE" : "CUSTOM"));
         item.setUnitNameSnapshot(selectedUnit != null
                 ? selectedUnit.getName()
-                : (product != null && product.getUnit() != null
-                    ? product.getUnit()
+                : (product != null && product.getBaseUnit() != null
+                    ? product.getBaseUnit().getName()
                     : "Unidad base"));
         item.setConversionFactorSnapshot(conversionFactor);
         item.setUnitPrice(unitPrice);

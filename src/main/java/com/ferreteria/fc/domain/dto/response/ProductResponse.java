@@ -24,7 +24,19 @@ public class ProductResponse {
 
     private BigDecimal wholesalePrice;
 
-    private Integer wholesaleMinQuantity;
+    private BigDecimal wholesaleMinQuantity;
+
+    private BigDecimal minimumSaleQuantity;
+
+    private BigDecimal saleQuantityIncrement;
+
+    private Long baseUnitId;
+
+    private String baseUnitCode;
+
+    private String baseUnitName;
+
+    private String baseUnitSymbol;
 
     private BigDecimal stock;
 

@@ -16,6 +16,8 @@ public interface ProductRepository
 
     boolean existsBySku(String sku);
 
+    boolean existsByBaseUnitId(Long baseUnitId);
+
     List<Product> findByActiveTrue();
 
     List<Product> findByCategory(String category);

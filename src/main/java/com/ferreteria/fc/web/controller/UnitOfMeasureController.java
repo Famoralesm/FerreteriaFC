@@ -5,6 +5,7 @@ import com.ferreteria.fc.domain.dto.response.UnitOfMeasureResponse;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
 import com.ferreteria.fc.domain.repository.ProductUnitRepository;
+import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import com.ferreteria.fc.persistence.entity.User;
@@ -22,11 +23,13 @@ import java.util.Locale;
 public class UnitOfMeasureController {
     private final UnitOfMeasureRepository repository;
     private final ProductUnitRepository productUnitRepository;
+    private final ProductRepository productRepository;
     private final UserService userService;
 
-    public UnitOfMeasureController(UnitOfMeasureRepository repository, ProductUnitRepository productUnitRepository, UserService userService) {
+    public UnitOfMeasureController(UnitOfMeasureRepository repository, ProductUnitRepository productUnitRepository, ProductRepository productRepository, UserService userService) {
         this.repository = repository;
         this.productUnitRepository = productUnitRepository;
+        this.productRepository = productRepository;
         this.userService = userService;
     }
 
@@ -72,6 +75,9 @@ public class UnitOfMeasureController {
         validateAdmin(auth);
         UnitOfMeasure unit = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unidad no encontrada: " + id));
+        if (productRepository.existsByBaseUnitId(id)) {
+            throw new IllegalStateException("No se puede eliminar la unidad porque está asignada como unidad base de uno o más productos.");
+        }
         if (productUnitRepository.existsByCode(unit.getCode())) {
             throw new IllegalStateException("No se puede eliminar la unidad porque está utilizada en presentaciones de productos. Primero corrige esas presentaciones.");
         }

@@ -26,6 +26,8 @@ public interface ProductService {
             PatchProductRequest request
     );
 
+    ProductResponse setBaseUnit(Long id, Long unitOfMeasureId);
+
     void delete(Long id);
 
     List<ProductResponse> search(

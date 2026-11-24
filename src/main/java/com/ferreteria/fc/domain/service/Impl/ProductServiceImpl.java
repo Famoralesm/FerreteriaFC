@@ -8,11 +8,13 @@ import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.ProductStockRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
+import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
 import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
 import com.ferreteria.fc.persistence.entity.Product;
 import com.ferreteria.fc.persistence.entity.ProductStock;
 import com.ferreteria.fc.persistence.entity.Store;
+import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import com.ferreteria.fc.domain.enums.ImageKind;
 import com.ferreteria.fc.domain.service.ImageStorageService.StoredImage;
 
@@ -32,19 +34,22 @@ public class ProductServiceImpl implements ProductService {
     private final StoreRepository storeRepository;
     private final ProductMapper productMapper;
     private final ImageStorageService imageStorageService;
+    private final UnitOfMeasureRepository unitOfMeasureRepository;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
             ProductStockRepository productStockRepository,
             StoreRepository storeRepository,
             ProductMapper productMapper,
-            ImageStorageService imageStorageService
+            ImageStorageService imageStorageService,
+            UnitOfMeasureRepository unitOfMeasureRepository
     ) {
         this.imageStorageService= imageStorageService;
         this.productStockRepository = productStockRepository;
         this.storeRepository = storeRepository;
         this.productRepository = productRepository;
         this.productMapper = productMapper;
+        this.unitOfMeasureRepository = unitOfMeasureRepository;
     }
 
     @Override
@@ -66,6 +71,8 @@ public class ProductServiceImpl implements ProductService {
                 .price(request.getPrice())
                 .wholesalePrice(request.getWholesalePrice())
                 .wholesaleMinQuantity(request.getWholesaleMinQuantity())
+                .minimumSaleQuantity(request.getMinimumSaleQuantity() != null ? request.getMinimumSaleQuantity() : BigDecimal.ONE)
+                .saleQuantityIncrement(request.getSaleQuantityIncrement() != null ? request.getSaleQuantityIncrement() : BigDecimal.ONE)
                 .stock(0)
                 .active(
                         request.getActive() != null
@@ -166,10 +173,12 @@ public class ProductServiceImpl implements ProductService {
         product.setPrice(request.getPrice());
         product.setWholesalePrice(request.getWholesalePrice());
         product.setWholesaleMinQuantity(request.getWholesaleMinQuantity());
+        product.setMinimumSaleQuantity(request.getMinimumSaleQuantity() != null ? request.getMinimumSaleQuantity() : BigDecimal.ONE);
+        product.setSaleQuantityIncrement(request.getSaleQuantityIncrement() != null ? request.getSaleQuantityIncrement() : BigDecimal.ONE);
         product.setActive(request.getActive());
         product.setCategory(request.getCategory());
         product.setBrand(request.getBrand());
-        product.setUnit(request.getUnit());
+        if (request.getUnit() != null) product.setUnit(request.getUnit());
 
         return productMapper.toResponse(
                 productRepository.save(product)
@@ -229,6 +238,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
 
+        if (request.getMinimumSaleQuantity() != null) product.setMinimumSaleQuantity(request.getMinimumSaleQuantity());
+        if (request.getSaleQuantityIncrement() != null) product.setSaleQuantityIncrement(request.getSaleQuantityIncrement());
+
         if (request.getActive() != null) {
             product.setActive(request.getActive());
         }
@@ -248,6 +260,22 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toResponse(
                 productRepository.save(product)
         );
+    }
+
+    @Override
+    public ProductResponse setBaseUnit(Long id, Long unitOfMeasureId) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado: " + id));
+        UnitOfMeasure unit = unitOfMeasureRepository.findById(unitOfMeasureId)
+                .orElseThrow(() -> new IllegalArgumentException("Unidad de medida no encontrada: " + unitOfMeasureId));
+        if (!Boolean.TRUE.equals(unit.getActive())) {
+            throw new IllegalStateException("No puedes asignar una unidad de medida inactiva como unidad base.");
+        }
+        if (product.getBaseUnit() != null && !product.getBaseUnit().getId().equals(unitOfMeasureId)) {
+            throw new IllegalStateException("La unidad base ya fue definida. Para cambiarla se requiere un proceso de conversión de las presentaciones y movimientos existentes.");
+        }
+        product.setBaseUnit(unit);
+        return productMapper.toResponse(productRepository.save(product));
     }
 
     @Override

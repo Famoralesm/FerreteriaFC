@@ -1,7 +1,6 @@
 package com.ferreteria.fc.domain.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -25,10 +24,16 @@ public class PatchProductRequest {
     @DecimalMin(value = "0.0", inclusive = true)
     private BigDecimal wholesalePrice;
 
-    @Min(1)
-    private Integer wholesaleMinQuantity;
+    @DecimalMin(value = "0.0001")
+    private BigDecimal wholesaleMinQuantity;
 
-    @Min(0)
+    @DecimalMin(value = "0.0001")
+    private BigDecimal minimumSaleQuantity;
+
+    @DecimalMin(value = "0.0001")
+    private BigDecimal saleQuantityIncrement;
+
+    @jakarta.validation.constraints.Min(0)
     private Integer stock;
 
     private Boolean active;

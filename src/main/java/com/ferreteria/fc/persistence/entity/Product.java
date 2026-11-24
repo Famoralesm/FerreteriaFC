@@ -45,8 +45,20 @@ public class Product {
     @Column(name = "wholesale_price", precision = 12, scale = 2)
     private BigDecimal wholesalePrice;
 
-    @Column(name = "wholesale_min_quantity")
-    private Integer wholesaleMinQuantity;
+    @Column(name = "wholesale_min_quantity", precision = 14, scale = 4)
+    private BigDecimal wholesaleMinQuantity;
+
+    @Column(name = "minimum_sale_quantity", nullable = false, precision = 14, scale = 4)
+    @Builder.Default
+    private BigDecimal minimumSaleQuantity = BigDecimal.ONE;
+
+    @Column(name = "sale_quantity_increment", nullable = false, precision = 14, scale = 4)
+    @Builder.Default
+    private BigDecimal saleQuantityIncrement = BigDecimal.ONE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "base_unit_id")
+    private UnitOfMeasure baseUnit;
 
     @Column(nullable = false)
     private Integer stock;

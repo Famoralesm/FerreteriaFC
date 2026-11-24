@@ -4,6 +4,7 @@ import com.ferreteria.fc.domain.dto.mapper.ProductMapper;
 import com.ferreteria.fc.domain.dto.request.CreateProductRequest;
 import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
+import com.ferreteria.fc.domain.dto.request.SetBaseUnitRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.service.ProductService;
 import org.springframework.http.MediaType;
@@ -96,6 +97,11 @@ public class ProductController {
         return ResponseEntity.ok(
                 productService.patchProduct(id, request)
         );
+    }
+
+    @PatchMapping("/{id}/base-unit")
+    public ResponseEntity<ProductResponse> setBaseUnit(@PathVariable Long id, @Valid @RequestBody SetBaseUnitRequest request) {
+        return ResponseEntity.ok(productService.setBaseUnit(id, request.getUnitOfMeasureId()));
     }
 
     @DeleteMapping("/{id}")
