@@ -48,7 +48,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         o.createdAt,
         o.totalAmount,
         o.status,
-        o.statusChangedAt
+        o.statusChangedAt,
+        o.orderNumber
     )
     FROM Order o
     WHERE o.store.id = :storeId
