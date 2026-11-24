@@ -30,7 +30,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 @Service
 @Transactional
@@ -59,7 +58,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse createOrder(CreateOrderRequest request, User user) {
         Order order = new Order();
-        order.setOrderNumber(UUID.randomUUID().toString());
+        order.setOrderNumber(generateOrderNumber(orderRepository.nextOrderNumberValue()));
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
@@ -101,6 +100,20 @@ public class OrderServiceImpl implements OrderService {
         recalculateTotal(order);
         order.setWazeLink(WazeUtils.generateLink(order.getAddress()));
         return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    private String generateOrderNumber(Long sequenceValue) {
+        long group = ((sequenceValue - 1) / 9999) + 1;
+        long consecutive = ((sequenceValue - 1) % 9999) + 1;
+
+        StringBuilder letters = new StringBuilder();
+        while (group > 0) {
+            group--;
+            letters.insert(0, (char) ('A' + (group % 26)));
+            group /= 26;
+        }
+
+        return letters + String.format("%04d", consecutive);
     }
 
     private OrderItem buildItem(OrderItemRequest request, Order order) {
@@ -348,8 +361,12 @@ public class OrderServiceImpl implements OrderService {
     }
     @Override
     public OrderResponse confirmPayment(Long id, User user) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
+
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            throw new IllegalStateException("Agrega al menos un producto antes de confirmar el pago");
+        }
 
         if (order.getPaymentStatus() != PaymentStatus.PENDING) {
             throw new IllegalStateException("El pago del pedido ya fue procesado");
