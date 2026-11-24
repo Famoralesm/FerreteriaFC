@@ -272,6 +272,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
+            if (request.getStatus() == OrderStatus.DELIVERED
+                    && order.getPaymentStatus() != PaymentStatus.PAID) {
+                throw new IllegalStateException(
+                        "Para marcar el pedido como entregado, primero debes registrar el pago como recibido"
+                );
+            }
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
             reversePaymentIfRequired(order, user, request.getStatus());
@@ -352,6 +358,12 @@ public class OrderServiceImpl implements OrderService {
         if (request.getNotes() != null) order.setNotes(request.getNotes());
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
+            if (request.getStatus() == OrderStatus.DELIVERED
+                    && order.getPaymentStatus() != PaymentStatus.PAID) {
+                throw new IllegalStateException(
+                        "Para marcar el pedido como entregado, primero debes registrar el pago como recibido"
+                );
+            }
             order.setStatus(request.getStatus());
             order.setStatusChangedAt(LocalDateTime.now());
             reversePaymentIfRequired(order, user, request.getStatus());
