@@ -8,9 +8,10 @@ ALTER TABLE products
     ADD COLUMN IF NOT EXISTS brand_id BIGINT;
 
 INSERT INTO brands (name, active)
-SELECT DISTINCT TRIM(p.brand), TRUE
+SELECT MIN(TRIM(p.brand)), TRUE
 FROM products p
 WHERE p.brand IS NOT NULL AND TRIM(p.brand) <> ''
+GROUP BY LOWER(TRIM(p.brand))
 ON CONFLICT (name) DO NOTHING;
 
 UPDATE products p
