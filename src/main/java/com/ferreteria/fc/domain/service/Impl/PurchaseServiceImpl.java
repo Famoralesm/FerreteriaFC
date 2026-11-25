@@ -60,6 +60,33 @@ public class PurchaseServiceImpl implements PurchaseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PurchaseResponse> getAll(User usuario) {
+        validarUsuario(usuario);
+        List<Purchase> purchases = usuario.getRole() == Role.ADMIN
+                ? purchaseRepository.findAllByOrderByCreatedAtDesc()
+                : purchaseRepository.findBySucursalIdOrderByCreatedAtDesc(
+                        usuario.getSucursal() != null ? usuario.getSucursal().getId() : -1L
+                );
+        return purchases.stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PurchaseResponse getById(Long purchaseId, User usuario) {
+        validarUsuario(usuario);
+        if (purchaseId == null || purchaseId <= 0) {
+            throw new IllegalArgumentException("Debe indicar una compra válida");
+        }
+        Purchase purchase = purchaseRepository.findWithDetailsById(purchaseId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Compra no encontrada: " + purchaseId
+                ));
+        validarSucursalAutorizada(purchase.getSucursal().getId(), usuario);
+        return toResponse(purchase);
+    }
+
+    @Override
     public PurchaseResponse register(PurchaseRequest request, User usuario) {
         validarUsuario(usuario);
 
