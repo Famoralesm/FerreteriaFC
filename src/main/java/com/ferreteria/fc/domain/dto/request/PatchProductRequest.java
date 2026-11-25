@@ -42,5 +42,7 @@ public class PatchProductRequest {
 
     private String brand;
 
+    private Long brandId;
+
     private String unit;
 }
