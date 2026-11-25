@@ -27,6 +27,21 @@ public class PurchaseController {
         this.userService = userService;
     }
 
+    @GetMapping
+    public ResponseEntity<java.util.List<PurchaseResponse>> listar(Authentication authentication) {
+        User usuario = obtenerUsuario(authentication);
+        return ResponseEntity.ok(purchaseService.getAll(usuario));
+    }
+
+    @GetMapping("/{purchaseId}")
+    public ResponseEntity<PurchaseResponse> obtener(
+            @PathVariable Long purchaseId,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+        return ResponseEntity.ok(purchaseService.getById(purchaseId, usuario));
+    }
+
     @PostMapping
     public ResponseEntity<PurchaseResponse> register(
             @Valid @RequestBody PurchaseRequest request,
