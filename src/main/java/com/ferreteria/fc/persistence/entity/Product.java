@@ -73,6 +73,10 @@ public class Product {
     @Column(length = 100)
     private String brand;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id")
+    private Brand brandEntity;
+
     @Column(length = 50)
     private String unit;
 

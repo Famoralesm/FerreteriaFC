@@ -45,5 +45,7 @@ public class UpdateProductRequest {
 
     private String brand;
 
+    private Long brandId;
+
     private String unit;
 }

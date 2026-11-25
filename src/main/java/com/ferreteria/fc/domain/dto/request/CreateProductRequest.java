@@ -44,5 +44,7 @@ public class CreateProductRequest {
 
     private String brand;
 
+    private Long brandId;
+
     private String unit;
 }

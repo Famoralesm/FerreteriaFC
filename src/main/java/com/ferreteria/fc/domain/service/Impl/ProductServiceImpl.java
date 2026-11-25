@@ -6,6 +6,8 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.repository.ProductRepository;
+import com.ferreteria.fc.domain.repository.BrandRepository;
+import com.ferreteria.fc.persistence.entity.Brand;
 import com.ferreteria.fc.domain.repository.ProductUnitRepository;
 import com.ferreteria.fc.domain.repository.OrderRepository;
 import com.ferreteria.fc.domain.repository.ProductStockRepository;
@@ -33,6 +35,7 @@ import java.math.BigDecimal;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final BrandRepository brandRepository;
     private final ProductStockRepository productStockRepository;
     private final StoreRepository storeRepository;
     private final ProductMapper productMapper;
@@ -43,6 +46,7 @@ public class ProductServiceImpl implements ProductService {
 
     public ProductServiceImpl(
             ProductRepository productRepository,
+            BrandRepository brandRepository,
             ProductStockRepository productStockRepository,
             StoreRepository storeRepository,
             ProductMapper productMapper,
@@ -53,6 +57,7 @@ public class ProductServiceImpl implements ProductService {
     ) {
         this.imageStorageService= imageStorageService;
         this.productStockRepository = productStockRepository;
+        this.brandRepository = brandRepository;
         this.storeRepository = storeRepository;
         this.productRepository = productRepository;
         this.productMapper = productMapper;
@@ -89,7 +94,8 @@ public class ProductServiceImpl implements ProductService {
                                 : true
                 )
                 .category(request.getCategory())
-                .brand(request.getBrand())
+                .brand(resolveBrandName(request.getBrandId(), request.getBrand()))
+                .brandEntity(resolveBrand(request.getBrandId()))
                 .unit(request.getUnit())
                 .build();
 
@@ -186,7 +192,14 @@ public class ProductServiceImpl implements ProductService {
         product.setSaleQuantityIncrement(request.getSaleQuantityIncrement() != null ? request.getSaleQuantityIncrement() : BigDecimal.ONE);
         product.setActive(request.getActive());
         product.setCategory(request.getCategory());
-        product.setBrand(request.getBrand());
+        if (request.getBrandId() != null) {
+            Brand brand = resolveBrand(request.getBrandId());
+            product.setBrandEntity(brand);
+            product.setBrand(brand.getName());
+        } else if (request.getBrand() != null) {
+            product.setBrand(request.getBrand());
+            product.setBrandEntity(null);
+        }
         if (request.getUnit() != null) product.setUnit(request.getUnit());
 
         return productMapper.toResponse(
@@ -258,8 +271,13 @@ public class ProductServiceImpl implements ProductService {
             product.setCategory(request.getCategory());
         }
 
-        if (request.getBrand() != null) {
+        if (request.getBrandId() != null) {
+            Brand brand = resolveBrand(request.getBrandId());
+            product.setBrandEntity(brand);
+            product.setBrand(brand.getName());
+        } else if (request.getBrand() != null) {
             product.setBrand(request.getBrand());
+            product.setBrandEntity(null);
         }
 
         if (request.getUnit() != null) {
@@ -465,4 +483,15 @@ public class ProductServiceImpl implements ProductService {
 
         return response;
     }
+    private Brand resolveBrand(Long brandId) {
+        if (brandId == null) return null;
+        return brandRepository.findByIdAndActiveTrue(brandId)
+                .orElseThrow(() -> new IllegalArgumentException("La marca seleccionada no existe o está inactiva"));
+    }
+
+    private String resolveBrandName(Long brandId, String legacyName) {
+        Brand brand = resolveBrand(brandId);
+        return brand != null ? brand.getName() : legacyName;
+    }
+
 }

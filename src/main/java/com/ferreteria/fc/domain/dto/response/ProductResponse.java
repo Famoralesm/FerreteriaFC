@@ -46,6 +46,8 @@ public class ProductResponse {
 
     private String brand;
 
+    private Long brandId;
+
     private String unit;
 
     private LocalDateTime createdAt;
