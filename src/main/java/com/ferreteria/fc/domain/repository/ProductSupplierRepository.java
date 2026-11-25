@@ -20,8 +20,7 @@ public interface ProductSupplierRepository
 
     Optional<ProductSupplier> findByProductIdAndSelectedTrue(Long productId);
 
-    Optional<ProductSupplier> findByProductIdAndSupplierId(
-            Long productId,
-            Long supplierId
+    Optional<ProductSupplier> findByProductIdAndSupplierIdAndBrandIdAndProductUnitId(
+            Long productId, Long supplierId, Long brandId, Long productUnitId
     );
 }
