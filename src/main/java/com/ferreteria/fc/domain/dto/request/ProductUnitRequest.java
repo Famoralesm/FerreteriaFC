@@ -26,6 +26,14 @@ public class ProductUnitRequest {
     private BigDecimal conversionFactor;
 
     @NotNull
+    @DecimalMin(value = "0.0001")
+    private BigDecimal minimumSaleQuantity;
+
+    @NotNull
+    @DecimalMin(value = "0.0001")
+    private BigDecimal saleQuantityIncrement;
+
+    @NotNull
     private Boolean purchaseAllowed;
 
     @NotNull

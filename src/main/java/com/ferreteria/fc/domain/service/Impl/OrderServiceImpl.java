@@ -195,14 +195,42 @@ public class OrderServiceImpl implements OrderService {
                     ? selectedUnit.getConversionFactor()
                     : BigDecimal.ONE;
             BigDecimal quantityInBaseUnit = request.getQuantity().multiply(conversionFactor);
-            BigDecimal minimum = product.getMinimumSaleQuantity() != null ? product.getMinimumSaleQuantity() : BigDecimal.ONE;
-            BigDecimal increment = product.getSaleQuantityIncrement() != null ? product.getSaleQuantityIncrement() : BigDecimal.ONE;
-            if (quantityInBaseUnit.compareTo(minimum) < 0) {
-                throw new IllegalArgumentException("La cantidad mínima de venta para " + product.getName() + " es " + minimum + " " + product.getBaseUnit().getSymbol() + ".");
+
+            ProductUnit saleRuleUnit = selectedUnit;
+            if (saleRuleUnit == null) {
+                saleRuleUnit = productUnitRepository
+                        .findByProductIdAndCode(product.getId(), product.getBaseUnit().getCode())
+                        .orElse(null);
+            }
+
+            boolean basePresentation = saleRuleUnit == null
+                    || saleRuleUnit.getCode().equals(product.getBaseUnit().getCode());
+            BigDecimal minimum = saleRuleUnit != null && saleRuleUnit.getMinimumSaleQuantity() != null
+                    ? saleRuleUnit.getMinimumSaleQuantity()
+                    : basePresentation && product.getMinimumSaleQuantity() != null
+                    ? product.getMinimumSaleQuantity()
+                    : BigDecimal.ONE;
+            BigDecimal increment = saleRuleUnit != null && saleRuleUnit.getSaleQuantityIncrement() != null
+                    ? saleRuleUnit.getSaleQuantityIncrement()
+                    : basePresentation && product.getSaleQuantityIncrement() != null
+                    ? product.getSaleQuantityIncrement()
+                    : BigDecimal.ONE;
+            String saleUnitName = saleRuleUnit != null
+                    ? saleRuleUnit.getName()
+                    : product.getBaseUnit().getName();
+
+            if (request.getQuantity().compareTo(minimum) < 0) {
+                throw new IllegalArgumentException(
+                        "La cantidad mínima de venta para " + product.getName()
+                                + " en " + saleUnitName + " es " + minimum + "."
+                );
             }
             if (increment.compareTo(BigDecimal.ZERO) <= 0
-                    || quantityInBaseUnit.subtract(minimum).remainder(increment).compareTo(BigDecimal.ZERO) != 0) {
-                throw new IllegalArgumentException("La cantidad debe respetar incrementos de " + increment + " " + product.getBaseUnit().getSymbol() + ", desde un mínimo de " + minimum + ".");
+                    || request.getQuantity().subtract(minimum).remainder(increment).compareTo(BigDecimal.ZERO) != 0) {
+                throw new IllegalArgumentException(
+                        "La cantidad debe respetar incrementos de " + increment
+                                + " " + saleUnitName + ", desde un mínimo de " + minimum + "."
+                );
             }
 
             // El precio mayorista se aplica después de construir todas las líneas,

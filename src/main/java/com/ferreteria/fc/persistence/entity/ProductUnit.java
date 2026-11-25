@@ -51,6 +51,12 @@ public class ProductUnit {
     )
     private BigDecimal conversionFactor;
 
+    @Column(name = "minimum_sale_quantity", precision = 14, scale = 4)
+    private BigDecimal minimumSaleQuantity;
+
+    @Column(name = "sale_quantity_increment", precision = 14, scale = 4)
+    private BigDecimal saleQuantityIncrement;
+
     @Column(name = "purchase_allowed", nullable = false)
     @Builder.Default
     private Boolean purchaseAllowed = true;

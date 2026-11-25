@@ -13,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products/{productId}/units")
@@ -77,10 +79,19 @@ public class ProductUnitController {
     }
 
     @DeleteMapping("/{unitId}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long productId, @PathVariable Long unitId, Authentication authentication) {
+    public ResponseEntity<?> eliminar(
+            @PathVariable Long productId,
+            @PathVariable Long unitId,
+            Authentication authentication
+    ) {
         validarAdmin(authentication);
-        productUnitService.delete(productId, unitId);
-        return ResponseEntity.noContent().build();
+        try {
+            productUnitService.delete(productId, unitId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", exception.getMessage()));
+        }
     }
 
     @PatchMapping("/{unitId}/activate")
@@ -113,6 +124,28 @@ public class ProductUnitController {
         }
     }
 
+    private BigDecimal resolveMinimumSaleQuantity(ProductUnit unit) {
+        if (unit.getMinimumSaleQuantity() != null) {
+            return unit.getMinimumSaleQuantity();
+        }
+        boolean baseUnit = unit.getProduct().getBaseUnit() != null
+                && unit.getProduct().getBaseUnit().getCode().equals(unit.getCode());
+        return baseUnit && unit.getProduct().getMinimumSaleQuantity() != null
+                ? unit.getProduct().getMinimumSaleQuantity()
+                : BigDecimal.ONE;
+    }
+
+    private BigDecimal resolveSaleQuantityIncrement(ProductUnit unit) {
+        if (unit.getSaleQuantityIncrement() != null) {
+            return unit.getSaleQuantityIncrement();
+        }
+        boolean baseUnit = unit.getProduct().getBaseUnit() != null
+                && unit.getProduct().getBaseUnit().getCode().equals(unit.getCode());
+        return baseUnit && unit.getProduct().getSaleQuantityIncrement() != null
+                ? unit.getProduct().getSaleQuantityIncrement()
+                : BigDecimal.ONE;
+    }
+
     private ProductUnitResponse toResponse(ProductUnit unit) {
         return ProductUnitResponse.builder()
                 .id(unit.getId())
@@ -120,6 +153,8 @@ public class ProductUnitController {
                 .code(unit.getCode())
                 .name(unit.getName())
                 .conversionFactor(unit.getConversionFactor())
+                .minimumSaleQuantity(resolveMinimumSaleQuantity(unit))
+                .saleQuantityIncrement(resolveSaleQuantityIncrement(unit))
                 .purchaseAllowed(unit.getPurchaseAllowed())
                 .saleAllowed(unit.getSaleAllowed())
                 .active(unit.getActive())

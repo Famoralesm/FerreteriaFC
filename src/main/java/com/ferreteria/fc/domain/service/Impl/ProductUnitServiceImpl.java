@@ -48,6 +48,8 @@ public class ProductUnitServiceImpl implements ProductUnitService {
                 .code(code)
                 .name(request.getName().trim())
                 .conversionFactor(request.getConversionFactor())
+                .minimumSaleQuantity(request.getMinimumSaleQuantity())
+                .saleQuantityIncrement(request.getSaleQuantityIncrement())
                 .purchaseAllowed(request.getPurchaseAllowed())
                 .saleAllowed(request.getSaleAllowed())
                 .active(true)
@@ -74,6 +76,8 @@ public class ProductUnitServiceImpl implements ProductUnitService {
         unit.setCode(code);
         unit.setName(request.getName().trim());
         unit.setConversionFactor(request.getConversionFactor());
+        unit.setMinimumSaleQuantity(request.getMinimumSaleQuantity());
+        unit.setSaleQuantityIncrement(request.getSaleQuantityIncrement());
         unit.setPurchaseAllowed(request.getPurchaseAllowed());
         unit.setSaleAllowed(request.getSaleAllowed());
 

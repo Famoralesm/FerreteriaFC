@@ -15,6 +15,8 @@ public class ProductUnitResponse {
     private String code;
     private String name;
     private BigDecimal conversionFactor;
+    private BigDecimal minimumSaleQuantity;
+    private BigDecimal saleQuantityIncrement;
     private Boolean purchaseAllowed;
     private Boolean saleAllowed;
     private Boolean active;
