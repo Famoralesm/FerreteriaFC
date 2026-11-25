@@ -335,20 +335,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void delete(Long id) {
-
         Product product = productRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Producto no encontrado: " + id
-                        )
-                );
-        String previousPath = product.getImagePath();
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Producto no encontrado: " + id
+                ));
 
-        productRepository.delete(product);
-
-        productRepository.flush();
-
-        deleteUnusedProductImage(previousPath, null);
+        // Los productos con historial operativo se conservan para no romper
+        // movimientos, pedidos, compras ni trazabilidad de inventario.
+        product.setActive(false);
+        productRepository.saveAndFlush(product);
     }
 
     @Override
