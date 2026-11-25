@@ -13,6 +13,12 @@ public class ProductSupplierRequest {
     private Long supplierId;
 
     @NotNull
+    private Long brandId;
+
+    @NotNull
+    private Long productUnitId;
+
+    @NotNull
     @DecimalMin("0.0")
     private BigDecimal purchasePrice;
 
