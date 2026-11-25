@@ -10,7 +10,7 @@ import java.math.BigDecimal;
         name = "product_supplier",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_product_supplier",
+                        name = "uk_product_supplier_offer",
                         columnNames = {"product_id", "supplier_id", "brand_id", "product_unit_id"}
                 )
         }
