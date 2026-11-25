@@ -79,6 +79,15 @@ public class SupplierController {
         return ResponseEntity.ok(mapper.toResponse(result));
     }
 
+    @PutMapping("/{productId}/suppliers/{productSupplierId}")
+    public ResponseEntity<ProductSupplierResponse> actualizarOferta(
+            @PathVariable Long productId,
+            @PathVariable Long productSupplierId,
+            @Valid @RequestBody ProductSupplierRequest request) {
+        ProductSupplier result = productSupplierService.updateSupplierOffer(productId, productSupplierId, request);
+        return ResponseEntity.ok(mapper.toResponse(result));
+    }
+
     @DeleteMapping("/{productId}/suppliers/{productSupplierId}")
     public ResponseEntity<Void> quitarProveedorDeProducto(
             @PathVariable Long productId,
