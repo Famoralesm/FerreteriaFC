@@ -12,7 +12,7 @@ public interface ProductSupplierRepository
 
     List<ProductSupplier> findByProductId(Long productId);
 
-    @EntityGraph(attributePaths = {"product", "supplier"})
+    @EntityGraph(attributePaths = {"product", "product.baseUnit", "supplier", "brand", "productUnit"})
     List<ProductSupplier> findByProductIdOrderByPurchasePriceAsc(Long productId);
 
     @EntityGraph(attributePaths = {"product", "supplier"})
