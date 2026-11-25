@@ -18,6 +18,11 @@ public interface InventoryService {
             User usuario
     );
 
+    InventoryMovementResponse registerReturn(
+            InventoryMovementRequest request,
+            User usuario
+    );
+
     InventoryMovementResponse registerAdjustment(
             InventoryMovementRequest request,
             User usuario

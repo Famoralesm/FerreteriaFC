@@ -318,7 +318,7 @@ public class OrderServiceImpl implements OrderService {
                             productId, order.getStore().getId(), MovementType.EXIT, "ORDER", order.getId());
             boolean returnExists = inventoryMovementRepository
                     .existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
-                            productId, order.getStore().getId(), MovementType.ENTRY, "ORDER_RETURN", order.getId());
+                            productId, order.getStore().getId(), MovementType.RETURN, "ORDER_RETURN", order.getId());
 
             InventoryMovementRequest movement = InventoryMovementRequest.builder()
                     .productoId(productId)
@@ -334,7 +334,7 @@ public class OrderServiceImpl implements OrderService {
             } else if (shouldReturn && exitExists && !returnExists) {
                 movement.setTipoReferencia("ORDER_RETURN");
                 movement.setMotivo("Devolución de pedido " + order.getOrderNumber());
-                inventoryService.registerEntry(movement, user);
+                inventoryService.registerReturn(movement, user);
             }
         }
     }

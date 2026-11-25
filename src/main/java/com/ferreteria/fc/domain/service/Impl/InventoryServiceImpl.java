@@ -68,6 +68,17 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public InventoryMovementResponse registerReturn(
+            InventoryMovementRequest request,
+            User usuario
+    ) {
+        validarCantidadPositiva(request.getCantidad());
+        return registrarMovimiento(
+                request, usuario, MovementType.RETURN, request.getCantidad()
+        );
+    }
+
+    @Override
     public InventoryMovementResponse registerAdjustment(
             InventoryMovementRequest request,
             User usuario
