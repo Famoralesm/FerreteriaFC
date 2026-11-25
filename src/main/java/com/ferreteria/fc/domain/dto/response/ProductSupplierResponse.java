@@ -13,5 +13,13 @@ public class ProductSupplierResponse {
     private String telefonoProveedor;
     private String emailProveedor;
     private BigDecimal precioCompra;
+    private Long marcaId;
+    private String nombreMarca;
+    private Long presentacionId;
+    private String codigoPresentacion;
+    private String nombrePresentacion;
+    private BigDecimal factorConversion;
+    private BigDecimal precioUnidadBase;
+    private String unidadBaseProducto;
     private Boolean seleccionado;
 }
