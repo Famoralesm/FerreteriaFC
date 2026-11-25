@@ -6,8 +6,6 @@ import com.ferreteria.fc.domain.repository.BrandRepository;
 import com.ferreteria.fc.persistence.entity.Brand;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -31,7 +29,7 @@ public class BrandController {
     public ResponseEntity<BrandResponse> create(@Valid @RequestBody BrandRequest request) {
         String name = request.getName().trim().replaceAll("\\s+", " ");
         if (brandRepository.existsByNameIgnoreCase(name)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una marca con ese nombre.");
+            throw new IllegalStateException("Ya existe una marca con ese nombre.");
         }
         Brand saved = brandRepository.save(Brand.builder().name(name).active(true).build());
         return ResponseEntity.ok(toResponse(saved));
