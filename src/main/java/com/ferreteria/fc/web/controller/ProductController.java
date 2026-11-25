@@ -101,7 +101,7 @@ public class ProductController {
 
     @PatchMapping("/{id}/base-unit")
     public ResponseEntity<ProductResponse> setBaseUnit(@PathVariable Long id, @Valid @RequestBody SetBaseUnitRequest request) {
-        return ResponseEntity.ok(productService.setBaseUnit(id, request.getUnitOfMeasureId()));
+        return ResponseEntity.ok(productService.setBaseUnit(id, request.getUnitOfMeasureId(), request.isPreserveExistingValues()));
     }
 
     @DeleteMapping("/{id}")

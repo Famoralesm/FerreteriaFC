@@ -65,6 +65,12 @@ public class ProductUnitServiceImpl implements ProductUnitService {
                     throw new IllegalStateException("Ya existe una presentación con código " + code);
                 });
 
+        if (unit.getProduct().getBaseUnit() != null
+                && unit.getProduct().getBaseUnit().getCode().equals(unit.getCode())
+                && (!code.equals(unit.getProduct().getBaseUnit().getCode())
+                || request.getConversionFactor().compareTo(java.math.BigDecimal.ONE) != 0)) {
+            throw new IllegalStateException("La presentación correspondiente a la unidad base debe conservar su código y factor 1.");
+        }
         unit.setCode(code);
         unit.setName(request.getName().trim());
         unit.setConversionFactor(request.getConversionFactor());
@@ -77,6 +83,9 @@ public class ProductUnitServiceImpl implements ProductUnitService {
     @Override
     public void deactivate(Long productId, Long unitId) {
         ProductUnit unit = obtenerUnidad(productId, unitId);
+        if (esUnidadBase(unit)) {
+            throw new IllegalStateException("No se puede desactivar la presentación que representa la unidad base del producto.");
+        }
         unit.setActive(false);
         productUnitRepository.save(unit);
     }
@@ -91,6 +100,9 @@ public class ProductUnitServiceImpl implements ProductUnitService {
     @Override
     public void delete(Long productId, Long unitId) {
         ProductUnit unit = obtenerUnidad(productId, unitId);
+        if (esUnidadBase(unit)) {
+            throw new IllegalStateException("No se puede eliminar la presentación que representa la unidad base del producto.");
+        }
         if (productUnitRepository.countOrderItemSnapshotsByUnitId(unitId) > 0) {
             throw new IllegalStateException("No se puede eliminar esta presentación porque ya forma parte de pedidos históricos. Puedes desactivarla para impedir nuevas ventas.");
         }
@@ -108,6 +120,11 @@ public class ProductUnitServiceImpl implements ProductUnitService {
         if (!productRepository.existsById(productId)) {
             throw new IllegalArgumentException("Producto no encontrado: " + productId);
         }
+    }
+
+    private boolean esUnidadBase(ProductUnit unit) {
+        return unit.getProduct().getBaseUnit() != null
+                && unit.getProduct().getBaseUnit().getCode().equals(unit.getCode());
     }
 
     private ProductUnit obtenerUnidad(Long productId, Long unitId) {

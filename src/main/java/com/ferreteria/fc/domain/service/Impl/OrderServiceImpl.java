@@ -1,6 +1,7 @@
 package com.ferreteria.fc.domain.service.Impl;
 
 import com.ferreteria.fc.domain.dto.mapper.OrderMapper;
+import com.ferreteria.fc.domain.dto.request.InventoryMovementRequest;
 import com.ferreteria.fc.domain.dto.request.CreateOrderRequest;
 import com.ferreteria.fc.domain.dto.request.OrderItemRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateOrderRequest;
@@ -9,13 +10,16 @@ import com.ferreteria.fc.domain.dto.response.OrderResponse;
 import com.ferreteria.fc.domain.dto.response.OrderSummaryResponse;
 import com.ferreteria.fc.domain.dto.utils.WazeUtils;
 import com.ferreteria.fc.domain.enums.OrderStatus;
+import com.ferreteria.fc.domain.enums.MovementType;
 import com.ferreteria.fc.domain.enums.PaymentStatus;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.OrderRepository;
+import com.ferreteria.fc.domain.repository.InventoryMovementRepository;
 import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.ProductUnitRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.OrderService;
+import com.ferreteria.fc.domain.service.InventoryService;
 import com.ferreteria.fc.persistence.entity.Order;
 import com.ferreteria.fc.persistence.entity.OrderItem;
 import com.ferreteria.fc.persistence.entity.Product;
@@ -30,6 +34,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 @Service
 @Transactional
@@ -40,19 +46,25 @@ public class OrderServiceImpl implements OrderService {
     private final ProductUnitRepository productUnitRepository;
     private final OrderMapper orderMapper;
     private final StoreRepository storeRepository;
+    private final InventoryService inventoryService;
+    private final InventoryMovementRepository inventoryMovementRepository;
 
     public OrderServiceImpl(
             OrderRepository orderRepository,
             ProductRepository productRepository,
             ProductUnitRepository productUnitRepository,
             OrderMapper orderMapper,
-            StoreRepository storeRepository
+            StoreRepository storeRepository,
+            InventoryService inventoryService,
+            InventoryMovementRepository inventoryMovementRepository
     ) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.productUnitRepository = productUnitRepository;
         this.orderMapper = orderMapper;
         this.storeRepository = storeRepository;
+        this.inventoryService = inventoryService;
+        this.inventoryMovementRepository = inventoryMovementRepository;
     }
 
     @Override
@@ -97,6 +109,7 @@ public class OrderServiceImpl implements OrderService {
                 .map(item -> buildItem(item, order)).toList();
 
         order.setItems(items);
+        applyWholesalePricing(items);
         recalculateTotal(order);
         order.setWazeLink(WazeUtils.generateLink(order.getAddress()));
         return orderMapper.toResponse(orderRepository.save(order));
@@ -192,15 +205,8 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalArgumentException("La cantidad debe respetar incrementos de " + increment + " " + product.getBaseUnit().getSymbol() + ", desde un mínimo de " + minimum + ".");
             }
 
-            // El umbral mayorista siempre se evalúa en la unidad base del producto,
-            // independientemente de si se vende por unidad, caja, pack u otra presentación.
-            if (product.getWholesalePrice() != null
-                    && product.getWholesaleMinQuantity() != null
-                    && quantityInBaseUnit.compareTo(product.getWholesaleMinQuantity()) >= 0) {
-                unitPrice = product.getWholesalePrice();
-                wholesale = true;
-                pricingType = "WHOLESALE";
-            }
+            // El precio mayorista se aplica después de construir todas las líneas,
+            // considerando la cantidad total del producto en su unidad base.
         }
 
         if (productName == null || productName.isBlank()) {
@@ -249,6 +255,106 @@ public class OrderServiceImpl implements OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
+    private void applyWholesalePricing(List<OrderItem> items) {
+        Map<Long, List<OrderItem>> itemsByProduct = new LinkedHashMap<>();
+        for (OrderItem item : items) {
+            if (item.getProduct() != null) {
+                itemsByProduct.computeIfAbsent(item.getProduct().getId(), key -> new java.util.ArrayList<>())
+                        .add(item);
+            }
+        }
+
+        for (List<OrderItem> productItems : itemsByProduct.values()) {
+            Product product = productItems.get(0).getProduct();
+            BigDecimal totalInBaseUnit = productItems.stream()
+                    .map(item -> item.getQuantity().multiply(
+                            item.getConversionFactorSnapshot() != null
+                                    ? item.getConversionFactorSnapshot()
+                                    : BigDecimal.ONE))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            boolean wholesale = product.getWholesalePrice() != null
+                    && product.getWholesaleMinQuantity() != null
+                    && totalInBaseUnit.compareTo(product.getWholesaleMinQuantity()) >= 0;
+            BigDecimal price = wholesale ? product.getWholesalePrice() : product.getPrice();
+
+            for (OrderItem item : productItems) {
+                BigDecimal factor = item.getConversionFactorSnapshot() != null
+                        ? item.getConversionFactorSnapshot()
+                        : BigDecimal.ONE;
+                item.setUnitPrice(price);
+                item.setTotalPrice(price.multiply(item.getQuantity()).multiply(factor));
+                item.setWholesaleApplied(wholesale);
+                item.setPricingType(wholesale ? "WHOLESALE" : "UNIT");
+            }
+        }
+    }
+
+    private void synchronizeInventoryForOrder(Order order, User user) {
+        if (order.getId() == null || order.getStore() == null || order.getItems() == null) {
+            return;
+        }
+
+        boolean shouldExit = order.getStatus() == OrderStatus.IN_ROUTE
+                || order.getStatus() == OrderStatus.DELIVERED;
+        boolean shouldReturn = order.getStatus() == OrderStatus.CANCELED
+                || order.getStatus() == OrderStatus.REJECTED;
+        if (!shouldExit && !shouldReturn) return;
+
+        Map<Long, BigDecimal> quantities = new LinkedHashMap<>();
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() == null || item.getQuantity() == null) continue;
+            Long productId = item.getProduct().getId();
+            BigDecimal factor = item.getConversionFactorSnapshot() != null
+                    ? item.getConversionFactorSnapshot()
+                    : BigDecimal.ONE;
+            quantities.merge(productId, item.getQuantity().multiply(factor), BigDecimal::add);
+        }
+
+        for (Map.Entry<Long, BigDecimal> entry : quantities.entrySet()) {
+            Long productId = entry.getKey();
+            BigDecimal quantity = entry.getValue();
+            boolean exitExists = inventoryMovementRepository
+                    .existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
+                            productId, order.getStore().getId(), MovementType.EXIT, "ORDER", order.getId());
+            boolean returnExists = inventoryMovementRepository
+                    .existsByProductoIdAndSucursalIdAndTipoMovimientoAndTipoReferenciaAndReferenciaId(
+                            productId, order.getStore().getId(), MovementType.ENTRY, "ORDER_RETURN", order.getId());
+
+            InventoryMovementRequest movement = InventoryMovementRequest.builder()
+                    .productoId(productId)
+                    .sucursalId(order.getStore().getId())
+                    .cantidad(quantity)
+                    .motivo("Pedido " + order.getOrderNumber())
+                    .tipoReferencia("ORDER")
+                    .referenciaId(order.getId())
+                    .build();
+
+            if (shouldExit && !exitExists) {
+                inventoryService.registerExit(movement, user);
+            } else if (shouldReturn && exitExists && !returnExists) {
+                movement.setTipoReferencia("ORDER_RETURN");
+                movement.setMotivo("Devolución de pedido " + order.getOrderNumber());
+                inventoryService.registerEntry(movement, user);
+            }
+        }
+    }
+
+    private void validateStatusTransition(OrderStatus current, OrderStatus next) {
+        if (current == OrderStatus.IN_ROUTE
+                && (next == OrderStatus.CREATED || next == OrderStatus.PREPARING)) {
+            throw new IllegalStateException("Un pedido en ruta no puede volver a preparación ni a creado.");
+        }
+        if ((current == OrderStatus.CANCELED || current == OrderStatus.REJECTED)
+                && next != current) {
+            throw new IllegalStateException("Un pedido cancelado o rechazado no puede reabrirse.");
+        }
+        if (current == OrderStatus.DELIVERED
+                && next != OrderStatus.CANCELED && next != OrderStatus.REJECTED) {
+            throw new IllegalStateException("Un pedido entregado solo puede pasar a cancelado o rechazado mediante reversa.");
+        }
+    }
+
+
     public List<OrderResponse> getAll() {
         return orderMapper.toListResponse(orderRepository.findAll());
     }
@@ -263,7 +369,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse updateOrder(Long id, UpdateOrderRequest request, User user) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
 
         order.setCustomerName(request.getCustomerName());
@@ -283,6 +389,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
+            validateStatusTransition(order.getStatus(), request.getStatus());
             if (request.getStatus() == OrderStatus.DELIVERED
                     && order.getPaymentStatus() != PaymentStatus.PAID) {
                 throw new IllegalStateException(
@@ -296,6 +403,11 @@ public class OrderServiceImpl implements OrderService {
 
         order.setNotes(request.getNotes());
         order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
+
+        if ((order.getStatus() == OrderStatus.IN_ROUTE || order.getStatus() == OrderStatus.DELIVERED)
+                && request.getItems() != null && !sameItems(order, request.getItems())) {
+            throw new IllegalStateException("No se pueden modificar productos ni cantidades después de descontar el stock al poner el pedido en ruta.");
+        }
 
         if (order.getPaymentStatus() != PaymentStatus.PENDING
                 && request.getItems() != null
@@ -313,9 +425,11 @@ public class OrderServiceImpl implements OrderService {
             List<OrderItem> items = request.getItems().stream()
                     .map(item -> buildItem(item, order)).toList();
             order.getItems().addAll(items);
+            applyWholesalePricing(items);
             recalculateTotal(order);
         }
 
+        synchronizeInventoryForOrder(order, user);
         return orderMapper.toResponse(orderRepository.save(order));
     }
 
@@ -348,7 +462,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request, User user) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
         if (request.getDeliveryDate() != null) order.setDeliveryDate(request.getDeliveryDate());
@@ -369,6 +483,7 @@ public class OrderServiceImpl implements OrderService {
         if (request.getNotes() != null) order.setNotes(request.getNotes());
 
         if (request.getStatus() != null && request.getStatus() != order.getStatus()) {
+            validateStatusTransition(order.getStatus(), request.getStatus());
             if (request.getStatus() == OrderStatus.DELIVERED
                     && order.getPaymentStatus() != PaymentStatus.PAID) {
                 throw new IllegalStateException(
@@ -380,6 +495,7 @@ public class OrderServiceImpl implements OrderService {
             reversePaymentIfRequired(order, user, request.getStatus());
         }
 
+        synchronizeInventoryForOrder(order, user);
         return orderMapper.toResponse(orderRepository.save(order));
     }
     @Override

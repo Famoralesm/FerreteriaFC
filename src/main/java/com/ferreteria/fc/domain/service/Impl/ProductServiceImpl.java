@@ -6,6 +6,8 @@ import com.ferreteria.fc.domain.dto.request.PatchProductRequest;
 import com.ferreteria.fc.domain.dto.request.UpdateProductRequest;
 import com.ferreteria.fc.domain.dto.response.ProductResponse;
 import com.ferreteria.fc.domain.repository.ProductRepository;
+import com.ferreteria.fc.domain.repository.ProductUnitRepository;
+import com.ferreteria.fc.domain.repository.OrderRepository;
 import com.ferreteria.fc.domain.repository.ProductStockRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
@@ -13,6 +15,7 @@ import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
 import com.ferreteria.fc.persistence.entity.Product;
 import com.ferreteria.fc.persistence.entity.ProductStock;
+import com.ferreteria.fc.persistence.entity.ProductUnit;
 import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.persistence.entity.UnitOfMeasure;
 import com.ferreteria.fc.domain.enums.ImageKind;
@@ -35,6 +38,8 @@ public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
     private final ImageStorageService imageStorageService;
     private final UnitOfMeasureRepository unitOfMeasureRepository;
+    private final ProductUnitRepository productUnitRepository;
+    private final OrderRepository orderRepository;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
@@ -42,7 +47,9 @@ public class ProductServiceImpl implements ProductService {
             StoreRepository storeRepository,
             ProductMapper productMapper,
             ImageStorageService imageStorageService,
-            UnitOfMeasureRepository unitOfMeasureRepository
+            UnitOfMeasureRepository unitOfMeasureRepository,
+            ProductUnitRepository productUnitRepository,
+            OrderRepository orderRepository
     ) {
         this.imageStorageService= imageStorageService;
         this.productStockRepository = productStockRepository;
@@ -50,6 +57,8 @@ public class ProductServiceImpl implements ProductService {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
         this.unitOfMeasureRepository = unitOfMeasureRepository;
+        this.productUnitRepository = productUnitRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -263,7 +272,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductResponse setBaseUnit(Long id, Long unitOfMeasureId) {
+    public ProductResponse setBaseUnit(Long id, Long unitOfMeasureId, boolean preserveExistingValues) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado: " + id));
         UnitOfMeasure unit = unitOfMeasureRepository.findById(unitOfMeasureId)
@@ -271,10 +280,38 @@ public class ProductServiceImpl implements ProductService {
         if (!Boolean.TRUE.equals(unit.getActive())) {
             throw new IllegalStateException("No puedes asignar una unidad de medida inactiva como unidad base.");
         }
-        if (product.getBaseUnit() != null && !product.getBaseUnit().getId().equals(unitOfMeasureId)) {
-            throw new IllegalStateException("La unidad base ya fue definida. Para cambiarla se requiere un proceso de conversión de las presentaciones y movimientos existentes.");
+        UnitOfMeasure previousBaseUnit = product.getBaseUnit();
+        boolean changingBaseUnit = previousBaseUnit != null
+                && !previousBaseUnit.getId().equals(unitOfMeasureId);
+        if (changingBaseUnit && !preserveExistingValues) {
+            throw new IllegalStateException("Para cambiar la unidad base debes confirmar que los precios, stock, reglas y factores ya están expresados en la nueva unidad.");
         }
+
+        if (changingBaseUnit) {
+            productUnitRepository.findByProductIdAndCode(id, previousBaseUnit.getCode())
+                    .ifPresent(previousPresentation -> previousPresentation.setActive(false));
+            // Corrige la etiqueta de líneas históricas vendidas directamente en la unidad base.
+            // No se alteran cantidades ni importes ya registrados.
+            orderRepository.updateBaseUnitSnapshotName(id, unit.getName());
+        }
+
         product.setBaseUnit(unit);
+        ProductUnit basePresentation = productUnitRepository.findByProductIdAndCode(id, unit.getCode())
+                .orElseGet(() -> ProductUnit.builder()
+                        .product(product)
+                        .code(unit.getCode())
+                        .name(unit.getName())
+                        .conversionFactor(BigDecimal.ONE)
+                        .purchaseAllowed(true)
+                        .saleAllowed(true)
+                        .active(true)
+                        .build());
+        basePresentation.setName(unit.getName());
+        basePresentation.setConversionFactor(BigDecimal.ONE);
+        basePresentation.setPurchaseAllowed(true);
+        basePresentation.setSaleAllowed(true);
+        basePresentation.setActive(true);
+        productUnitRepository.save(basePresentation);
         return productMapper.toResponse(productRepository.save(product));
     }
 

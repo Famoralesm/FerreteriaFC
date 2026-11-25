@@ -26,7 +26,7 @@ public interface ProductService {
             PatchProductRequest request
     );
 
-    ProductResponse setBaseUnit(Long id, Long unitOfMeasureId);
+    ProductResponse setBaseUnit(Long id, Long unitOfMeasureId, boolean preserveExistingValues);
 
     void delete(Long id);
 

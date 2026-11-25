@@ -11,4 +11,6 @@ import lombok.Setter;
 public class SetBaseUnitRequest {
     @NotNull
     private Long unitOfMeasureId;
+
+    private boolean preserveExistingValues;
 }
