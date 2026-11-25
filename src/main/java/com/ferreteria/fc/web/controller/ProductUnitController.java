@@ -36,7 +36,7 @@ public class ProductUnitController {
             @PathVariable Long productId,
             Authentication authentication
     ) {
-        validarAdmin(authentication);
+        validarAutenticado(authentication);
         return ResponseEntity.ok(productUnitService.getByProduct(productId)
                 .stream().map(this::toResponse).toList());
     }
@@ -92,6 +92,13 @@ public class ProductUnitController {
         validarAdmin(authentication);
         productUnitService.activate(productId, unitId);
         return ResponseEntity.noContent().build();
+    }
+
+    private void validarAutenticado(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("No existe un usuario autenticado");
+        }
+        userService.getByEmail(authentication.getName());
     }
 
     private void validarAdmin(Authentication authentication) {

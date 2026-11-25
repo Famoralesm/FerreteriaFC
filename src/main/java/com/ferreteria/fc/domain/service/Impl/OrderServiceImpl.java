@@ -524,6 +524,7 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setPaymentReceivedAt(LocalDateTime.now());
         order.setPaymentReceivedBy(user);
+        synchronizeInventoryForOrder(order, user);
 
         return orderMapper.toResponse(orderRepository.save(order));
     }
