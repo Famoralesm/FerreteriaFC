@@ -11,7 +11,7 @@ import java.math.BigDecimal;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_product_supplier",
-                        columnNames = {"product_id", "supplier_id"}
+                        columnNames = {"product_id", "supplier_id", "brand_id", "product_unit_id"}
                 )
         }
 )
@@ -33,6 +33,23 @@ public class ProductSupplier {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id")
+    private Brand brand;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_unit_id")
+    private ProductUnit productUnit;
+
+    @Column(name = "conversion_factor_snapshot", nullable = false, precision = 14, scale = 4)
+    private BigDecimal conversionFactorSnapshot;
+
+    @Column(name = "unit_code_snapshot", length = 30)
+    private String unitCodeSnapshot;
+
+    @Column(name = "unit_name_snapshot", length = 80)
+    private String unitNameSnapshot;
 
     @Column(
             name = "purchase_price",
