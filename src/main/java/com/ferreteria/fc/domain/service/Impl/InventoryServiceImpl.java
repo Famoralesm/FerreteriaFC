@@ -12,12 +12,15 @@ import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.ProductStockRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.InventoryService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.persistence.entity.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -28,19 +31,22 @@ public class InventoryServiceImpl implements InventoryService {
     private final StoreRepository storeRepository;
     private final InventoryMovementRepository movementRepository;
     private final InventoryCountRepository inventoryCountRepository;
+    private final AuditLogService auditLogService;
 
     public InventoryServiceImpl(
             ProductRepository productRepository,
             ProductStockRepository productStockRepository,
             StoreRepository storeRepository,
             InventoryMovementRepository movementRepository,
-            InventoryCountRepository inventoryCountRepository
+            InventoryCountRepository inventoryCountRepository,
+            AuditLogService auditLogService
     ) {
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
         this.storeRepository = storeRepository;
         this.movementRepository = movementRepository;
         this.inventoryCountRepository = inventoryCountRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -176,7 +182,25 @@ public class InventoryServiceImpl implements InventoryService {
                 .usuario(usuario)
                 .build();
 
-        return toResponse(movementRepository.save(movimiento));
+        InventoryMovement savedMovement = movementRepository.save(movimiento);
+        Map<String, Object> previousValues = new LinkedHashMap<>();
+        previousValues.put("stock", stockAnterior);
+        Map<String, Object> newValues = new LinkedHashMap<>();
+        newValues.put("stock", stockNuevo);
+        newValues.put("movementType", tipo.name());
+        newValues.put("quantity", diferencia.abs());
+        newValues.put("reason", request.getMotivo());
+        newValues.put("referenceType", request.getTipoReferencia());
+        newValues.put("referenceId", request.getReferenciaId());
+        auditLogService.record(
+                "INVENTORY", "INVENTORY_MOVEMENT", savedMovement.getId().toString(),
+                "STOCK_MOVED", usuario, sucursal, previousValues, newValues,
+                "Movimiento de inventario " + tipo.name() + " para " + producto.getName()
+                        + " en " + sucursal.getNombre(),
+                request.getTipoReferencia() != null && request.getTipoReferencia().startsWith("ORDER")
+                        ? "ORDER_PROCESS" : "WEB"
+        );
+        return toResponse(savedMovement);
     }
 
     private Long resolverSucursalId(
