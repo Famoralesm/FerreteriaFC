@@ -402,7 +402,22 @@ public class PurchaseServiceImpl implements PurchaseService {
                     .usuario(usuario)
                     .build();
 
-            inventoryMovementRepository.save(movement);
+            InventoryMovement savedMovement = inventoryMovementRepository.save(movement);
+            auditLogService.record(
+                    "INVENTORY", "INVENTORY_MOVEMENT", savedMovement.getId().toString(),
+                    "STOCK_MOVED", usuario, purchase.getSucursal(),
+                    Map.of("stock", stockAnterior),
+                    Map.of(
+                            "stock", stockNuevo,
+                            "movementType", MovementType.ENTRY.name(),
+                            "quantity", cantidadEntrada,
+                            "referenceType", TIPO_REFERENCIA_COMPRA,
+                            "referenceId", purchaseId
+                    ),
+                    "Entrada de inventario por recepción de compra #" + purchaseId
+                            + " para producto " + product.getSku(),
+                    "PURCHASE_RECEIPT"
+            );
         }
 
         purchase.setStatus(PurchaseStatus.RECEIVED);
