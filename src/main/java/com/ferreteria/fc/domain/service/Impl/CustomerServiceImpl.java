@@ -187,7 +187,7 @@ public class CustomerServiceImpl implements CustomerService {
         if (!changedFields.isEmpty()) {
             auditLogService.recordForCurrentUser(
                     "CUSTOMERS", "CUSTOMER", updated.getId().toString(),
-                    activoAnterior != updated.getActivo() && !updated.getActivo() ? "DEACTIVATED" : "UPDATED",
+                    activoAnterior && !updated.getActivo() ? "DEACTIVATED" : !activoAnterior && updated.getActivo() ? "ACTIVATED" : "UPDATED",
                     null,
                     Map.of("changedFields", changedFields),
                     Map.of("changedFields", changedFields, "active", updated.getActivo()),
