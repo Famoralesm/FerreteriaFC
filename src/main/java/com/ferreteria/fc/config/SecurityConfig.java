@@ -89,6 +89,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/media/**")
                         .permitAll()
 
+                        .requestMatchers("/api/audit-logs/**")
+                        .hasRole("ADMIN")
+
                         .requestMatchers("/api/users/**")
                         .hasRole("ADMIN")
 
