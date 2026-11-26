@@ -2,9 +2,12 @@ package com.ferreteria.fc.domain.service;
 
 import com.ferreteria.fc.domain.dto.response.AuditLogResponse;
 import com.ferreteria.fc.domain.repository.AuditLogRepository;
+import com.ferreteria.fc.domain.repository.UserRepository;
 import com.ferreteria.fc.persistence.entity.AuditLog;
 import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.persistence.entity.User;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,9 +29,11 @@ public class AuditLogService {
     );
 
     private final AuditLogRepository repository;
+    private final UserRepository userRepository;
 
-    public AuditLogService(AuditLogRepository repository) {
+    public AuditLogService(AuditLogRepository repository, UserRepository userRepository) {
         this.repository = repository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -68,6 +73,27 @@ public class AuditLogService {
         event.setDescription(description);
         event.setOrigin(origin == null || origin.isBlank() ? "SYSTEM" : origin.trim().toUpperCase(Locale.ROOT));
         return repository.save(event);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public AuditLog recordForCurrentUser(
+            String module,
+            String entityType,
+            String entityId,
+            String action,
+            Store store,
+            Map<String, Object> oldValues,
+            Map<String, Object> newValues,
+            String description,
+            String origin
+    ) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User actor = authentication == null || !authentication.isAuthenticated()
+                ? null
+                : userRepository.findByEmail(authentication.getName());
+        Store effectiveStore = store != null ? store : actor != null ? actor.getSucursal() : null;
+        return record(module, entityType, entityId, action, actor, effectiveStore,
+                oldValues, newValues, description, origin);
     }
 
     @Transactional(readOnly = true)
