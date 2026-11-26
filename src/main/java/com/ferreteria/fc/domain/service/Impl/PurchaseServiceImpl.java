@@ -390,7 +390,7 @@ public class PurchaseServiceImpl implements PurchaseService {
         if (usuario.getSucursal() == null
                 || !usuario.getSucursal().getId().equals(sucursalId)) {
             throw new IllegalArgumentException(
-                    "No tienes permiso para recibir compras de otra sucursal"
+                    "No tienes permiso para operar compras de otra sucursal"
             );
         }
     }
