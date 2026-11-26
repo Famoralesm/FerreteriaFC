@@ -146,7 +146,9 @@ public class AuditLogService {
         if (values == null || values.isEmpty()) return null;
         Map<String, Object> safe = new LinkedHashMap<>();
         values.forEach((key, value) -> {
-            if (key != null && !SENSITIVE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+            String normalizedKey = key == null ? "" : key.toLowerCase(Locale.ROOT);
+            boolean sensitive = SENSITIVE_KEYS.stream().anyMatch(normalizedKey::contains);
+            if (key != null && !sensitive) {
                 safe.put(key, value);
             }
         });
