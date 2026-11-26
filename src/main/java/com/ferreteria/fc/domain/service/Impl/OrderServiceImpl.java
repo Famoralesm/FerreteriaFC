@@ -19,6 +19,7 @@ import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.ProductUnitRepository;
 import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.service.OrderService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.domain.service.InventoryService;
 import com.ferreteria.fc.persistence.entity.Order;
 import com.ferreteria.fc.persistence.entity.OrderItem;
@@ -48,6 +49,7 @@ public class OrderServiceImpl implements OrderService {
     private final StoreRepository storeRepository;
     private final InventoryService inventoryService;
     private final InventoryMovementRepository inventoryMovementRepository;
+    private final AuditLogService auditLogService;
 
     public OrderServiceImpl(
             OrderRepository orderRepository,
@@ -56,7 +58,8 @@ public class OrderServiceImpl implements OrderService {
             OrderMapper orderMapper,
             StoreRepository storeRepository,
             InventoryService inventoryService,
-            InventoryMovementRepository inventoryMovementRepository
+            InventoryMovementRepository inventoryMovementRepository,
+            AuditLogService auditLogService
     ) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -65,6 +68,7 @@ public class OrderServiceImpl implements OrderService {
         this.storeRepository = storeRepository;
         this.inventoryService = inventoryService;
         this.inventoryMovementRepository = inventoryMovementRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -112,7 +116,16 @@ public class OrderServiceImpl implements OrderService {
         applyWholesalePricing(items);
         recalculateTotal(order);
         order.setWazeLink(WazeUtils.generateLink(order.getAddress()));
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        Map<String, Object> createdValues = orderAuditValues(saved);
+        createdValues.put("items", itemsAuditSnapshot(saved));
+        auditLogService.record(
+                "ORDERS", "ORDER", saved.getId().toString(), "CREATED",
+                user, saved.getStore(), null, createdValues,
+                "Pedido " + saved.getOrderNumber() + " creado",
+                "WEB"
+        );
+        return orderMapper.toResponse(saved);
     }
 
     private String generateOrderNumber(Long sequenceValue) {
@@ -399,6 +412,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse updateOrder(Long id, UpdateOrderRequest request, User user) {
         Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
+        Map<String, Object> previousAuditValues = orderAuditValues(order);
+        List<Map<String, Object>> previousItems = itemsAuditSnapshot(order);
+        Map<String, String> previousContact = contactAuditSnapshot(order);
+        OrderStatus previousStatus = order.getStatus();
 
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
@@ -458,7 +475,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         synchronizeInventoryForOrder(order, user);
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        recordOrderChanges(saved, user, previousAuditValues, previousItems, previousContact, previousStatus);
+        return orderMapper.toResponse(saved);
     }
 
     private boolean sameItems(Order order, List<OrderItemRequest> requestedItems) {
@@ -492,6 +511,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse patchOrder(Long id, UpdatePatchOrderRequest request, User user) {
         Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+        Map<String, Object> previousAuditValues = orderAuditValues(order);
+        List<Map<String, Object>> previousItems = itemsAuditSnapshot(order);
+        Map<String, String> previousContact = contactAuditSnapshot(order);
+        OrderStatus previousStatus = order.getStatus();
 
         if (request.getDeliveryDate() != null) order.setDeliveryDate(request.getDeliveryDate());
         if (request.getCustomerName() != null) order.setCustomerName(request.getCustomerName());
@@ -524,7 +547,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         synchronizeInventoryForOrder(order, user);
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        recordOrderChanges(saved, user, previousAuditValues, previousItems, previousContact, previousStatus);
+        return orderMapper.toResponse(saved);
     }
     @Override
     public OrderResponse confirmPayment(Long id, User user) {
@@ -552,6 +577,19 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setPaymentReceivedAt(LocalDateTime.now());
         order.setPaymentReceivedBy(user);
+        auditLogService.record(
+                "ORDERS", "ORDER", order.getId().toString(), "PAYMENT_RECEIVED",
+                user, order.getStore(),
+                Map.of("paymentStatus", PaymentStatus.PENDING.name()),
+                Map.of(
+                        "paymentStatus", PaymentStatus.PAID.name(),
+                        "paymentMethod", order.getPaymentMethod().name(),
+                        "amount", order.getTotalAmount(),
+                        "receivedAt", order.getPaymentReceivedAt().toString()
+                ),
+                "Pago del pedido " + order.getOrderNumber() + " confirmado",
+                "WEB"
+        );
         synchronizeInventoryForOrder(order, user);
 
         return orderMapper.toResponse(orderRepository.save(order));
@@ -566,6 +604,112 @@ public class OrderServiceImpl implements OrderService {
             order.setPaymentReversedAt(LocalDateTime.now());
             order.setPaymentReversedBy(user);
             order.setPaymentReversalReason(newStatus.name());
+            auditLogService.record(
+                    "ORDERS", "ORDER", order.getId().toString(), "PAYMENT_REVERSED",
+                    user, order.getStore(),
+                    Map.of("paymentStatus", PaymentStatus.PAID.name()),
+                    Map.of(
+                            "paymentStatus", PaymentStatus.REVERSED.name(),
+                            "reason", newStatus.name(),
+                            "reversedAt", order.getPaymentReversedAt().toString()
+                    ),
+                    "Pago del pedido " + order.getOrderNumber() + " revertido por " + newStatus.name(),
+                    "WEB"
+            );
+        }
+    }
+
+    private Map<String, Object> orderAuditValues(Order order) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("orderNumber", order.getOrderNumber());
+        values.put("status", order.getStatus() != null ? order.getStatus().name() : null);
+        values.put("paymentStatus", order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null);
+        values.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
+        values.put("totalAmount", order.getTotalAmount());
+        values.put("deliveryDate", order.getDeliveryDate() != null ? order.getDeliveryDate().toString() : null);
+        values.put("itemCount", order.getItems() != null ? order.getItems().size() : 0);
+        return values;
+    }
+
+    private List<Map<String, Object>> itemsAuditSnapshot(Order order) {
+        if (order.getItems() == null) return List.of();
+        return order.getItems().stream().map(item -> {
+            Map<String, Object> values = new LinkedHashMap<>();
+            values.put("productId", item.getProduct() != null ? item.getProduct().getId() : null);
+            values.put("productName", item.getProductName());
+            values.put("quantity", item.getQuantity());
+            values.put("presentation", item.getUnitNameSnapshot());
+            values.put("conversionFactor", item.getConversionFactorSnapshot());
+            values.put("unitPrice", item.getUnitPrice());
+            values.put("totalPrice", item.getTotalPrice());
+            return values;
+        }).toList();
+    }
+
+    private Map<String, String> contactAuditSnapshot(Order order) {
+        Map<String, String> values = new LinkedHashMap<>();
+        values.put("customerName", order.getCustomerName());
+        values.put("phone", order.getPhone());
+        values.put("address", order.getAddress());
+        return values;
+    }
+
+    private void recordOrderChanges(
+            Order order,
+            User user,
+            Map<String, Object> previousValues,
+            List<Map<String, Object>> previousItems,
+            Map<String, String> previousContact,
+            OrderStatus previousStatus
+    ) {
+        Map<String, Object> currentValues = orderAuditValues(order);
+        if (!previousValues.equals(currentValues)) {
+            auditLogService.record(
+                    "ORDERS", "ORDER", order.getId().toString(), "UPDATED",
+                    user, order.getStore(), previousValues, currentValues,
+                    "Datos operacionales del pedido " + order.getOrderNumber() + " actualizados",
+                    "WEB"
+            );
+        }
+
+        if (previousStatus != order.getStatus()) {
+            auditLogService.record(
+                    "ORDERS", "ORDER", order.getId().toString(), "STATUS_CHANGED",
+                    user, order.getStore(),
+                    Map.of("status", previousStatus.name()),
+                    Map.of("status", order.getStatus().name()),
+                    "Estado del pedido " + order.getOrderNumber() + " cambiado a " + order.getStatus().name(),
+                    "WEB"
+            );
+        }
+
+        List<Map<String, Object>> currentItems = itemsAuditSnapshot(order);
+        if (!previousItems.equals(currentItems)) {
+            auditLogService.record(
+                    "ORDERS", "ORDER", order.getId().toString(), "ITEMS_UPDATED",
+                    user, order.getStore(),
+                    Map.of("items", previousItems),
+                    Map.of("items", currentItems),
+                    "Productos del pedido " + order.getOrderNumber() + " modificados",
+                    "WEB"
+            );
+        }
+
+        Map<String, String> changedContactFields = new LinkedHashMap<>();
+        for (String field : previousContact.keySet()) {
+            if (!Objects.equals(previousContact.get(field), contactAuditSnapshot(order).get(field))) {
+                changedContactFields.put(field, "updated");
+            }
+        }
+        if (!changedContactFields.isEmpty()) {
+            auditLogService.record(
+                    "ORDERS", "ORDER", order.getId().toString(), "CUSTOMER_DATA_UPDATED",
+                    user, order.getStore(),
+                    Map.of("changedFields", changedContactFields.keySet()),
+                    Map.of("changedFields", changedContactFields.keySet()),
+                    "Se actualizaron datos de contacto del pedido " + order.getOrderNumber(),
+                    "WEB"
+            );
         }
     }
 
