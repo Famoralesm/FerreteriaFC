@@ -10,6 +10,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,10 +117,43 @@ public class AuditLogService {
             throw new IllegalArgumentException("La fecha inicial no puede ser posterior a la fecha final.");
         }
 
-        return repository.search(
-                normalize(module), normalize(entityType), normalizeIdentifier(entityId),
-                userId, storeId, normalize(action), fromDate, toDate, pageable
-        ).map(this::toResponse);
+        Specification<AuditLog> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            String normalizedModule = normalize(module);
+            String normalizedEntityType = normalize(entityType);
+            String normalizedEntityId = normalizeIdentifier(entityId);
+            String normalizedAction = normalize(action);
+
+            if (normalizedModule != null) {
+                predicates.add(criteriaBuilder.equal(root.get("module"), normalizedModule));
+            }
+            if (normalizedEntityType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("entityType"), normalizedEntityType));
+            }
+            if (normalizedEntityId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("entityId"), normalizedEntityId));
+            }
+            if (userId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
+            }
+            if (storeId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("store").get("id"), storeId));
+            }
+            if (normalizedAction != null) {
+                predicates.add(criteriaBuilder.equal(root.get("action"), normalizedAction));
+            }
+            if (fromDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), fromDate));
+            }
+            if (toDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), toDate));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return repository.findAll(specification, pageable).map(this::toResponse);
     }
 
     private AuditLogResponse toResponse(AuditLog event) {
