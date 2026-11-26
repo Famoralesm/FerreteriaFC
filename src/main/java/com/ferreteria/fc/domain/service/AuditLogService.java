@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -144,14 +145,29 @@ public class AuditLogService {
 
     private Map<String, Object> sanitize(Map<String, Object> values) {
         if (values == null || values.isEmpty()) return null;
-        Map<String, Object> safe = new LinkedHashMap<>();
-        values.forEach((key, value) -> {
-            String normalizedKey = key == null ? "" : key.toLowerCase(Locale.ROOT);
-            boolean sensitive = SENSITIVE_KEYS.stream().anyMatch(normalizedKey::contains);
-            if (key != null && !sensitive) {
-                safe.put(key, value);
-            }
-        });
+        Map<String, Object> safe = sanitizeMap(values);
         return safe.isEmpty() ? null : safe;
+    }
+
+    private Map<String, Object> sanitizeMap(Map<?, ?> values) {
+        Map<String, Object> safe = new LinkedHashMap<>();
+        values.forEach((rawKey, value) -> {
+            if (rawKey == null) return;
+            String key = rawKey.toString();
+            String normalizedKey = key.toLowerCase(Locale.ROOT);
+            boolean sensitive = SENSITIVE_KEYS.stream().anyMatch(normalizedKey::contains);
+            if (!sensitive) safe.put(key, sanitizeValue(value));
+        });
+        return safe;
+    }
+
+    private Object sanitizeValue(Object value) {
+        if (value instanceof Map<?, ?> map) return sanitizeMap(map);
+        if (value instanceof Iterable<?> iterable) {
+            List<Object> safe = new ArrayList<>();
+            iterable.forEach(item -> safe.add(sanitizeValue(item)));
+            return safe;
+        }
+        return value;
     }
 }
