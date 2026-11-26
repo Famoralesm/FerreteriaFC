@@ -53,6 +53,26 @@ public class PurchaseController {
                 .body(purchaseService.register(request, usuario));
     }
 
+    @PutMapping("/{purchaseId}")
+    public ResponseEntity<PurchaseResponse> update(
+            @PathVariable Long purchaseId,
+            @Valid @RequestBody PurchaseRequest request,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+        return ResponseEntity.ok(purchaseService.update(purchaseId, request, usuario));
+    }
+
+    @DeleteMapping("/{purchaseId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long purchaseId,
+            Authentication authentication
+    ) {
+        User usuario = obtenerUsuario(authentication);
+        purchaseService.delete(purchaseId, usuario);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{purchaseId}/receive")
     public ResponseEntity<PurchaseResponse> receive(
             @PathVariable Long purchaseId,
