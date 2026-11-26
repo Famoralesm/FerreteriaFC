@@ -13,5 +13,9 @@ public interface PurchaseService {
 
     PurchaseResponse register(PurchaseRequest request, User usuario);
 
+    PurchaseResponse update(Long purchaseId, PurchaseRequest request, User usuario);
+
+    void delete(Long purchaseId, User usuario);
+
     PurchaseResponse receive(Long purchaseId, User usuario);
 }
