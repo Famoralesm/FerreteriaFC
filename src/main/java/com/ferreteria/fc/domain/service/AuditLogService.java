@@ -115,7 +115,7 @@ public class AuditLogService {
         }
 
         return repository.search(
-                normalize(module), normalize(entityType), normalize(entityId),
+                normalize(module), normalize(entityType), normalizeIdentifier(entityId),
                 userId, storeId, normalize(action), fromDate, toDate, pageable
         ).map(this::toResponse);
     }
@@ -142,6 +142,10 @@ public class AuditLogService {
 
     private String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeIdentifier(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private Map<String, Object> sanitize(Map<String, Object> values) {
