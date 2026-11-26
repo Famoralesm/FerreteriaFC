@@ -154,6 +154,89 @@ public class PurchaseServiceImpl implements PurchaseService {
     }
 
     @Override
+    public PurchaseResponse update(Long purchaseId, PurchaseRequest request, User usuario) {
+        validarUsuario(usuario);
+        if (purchaseId == null || purchaseId <= 0) {
+            throw new IllegalArgumentException("Debe indicar una compra válida");
+        }
+
+        Purchase purchase = purchaseRepository.findByIdForUpdate(purchaseId)
+                .orElseThrow(() -> new IllegalArgumentException("Compra no encontrada: " + purchaseId));
+
+        if (purchase.getStatus() != PurchaseStatus.PENDING_RECEIPT) {
+            throw new IllegalStateException("Solo se pueden editar compras pendientes de recepción");
+        }
+        validarSucursalAutorizada(purchase.getSucursal().getId(), usuario);
+
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new IllegalArgumentException("La compra debe incluir al menos un producto");
+        }
+
+        Supplier supplier = supplierRepository.findById(request.supplierId())
+                .orElseThrow(() -> new IllegalArgumentException("Proveedor no encontrado: " + request.supplierId()));
+        if (!Boolean.TRUE.equals(supplier.getActivo())) {
+            throw new IllegalArgumentException("No se pueden registrar compras para un proveedor inactivo");
+        }
+
+        Long sucursalId = resolverSucursalId(request, usuario);
+        Store sucursal = storeRepository.findById(sucursalId)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada: " + sucursalId));
+        if (!Boolean.TRUE.equals(sucursal.getActiva())) {
+            throw new IllegalArgumentException("No se pueden registrar compras para una sucursal inactiva");
+        }
+        validarSucursalAutorizada(sucursalId, usuario);
+
+        purchase.setSupplier(supplier);
+        purchase.setSucursal(sucursal);
+        purchase.setDocumentType(normalizarTexto(request.documentType()));
+        purchase.setDocumentNumber(normalizarTexto(request.documentNumber()));
+        purchase.setPurchaseDate(request.purchaseDate());
+        purchase.setNotes(normalizarTexto(request.notes()));
+
+        // orphanRemoval elimina los detalles anteriores; los nuevos se reconstruyen
+        // desde el catálogo para recalcular conversiones y subtotales en servidor.
+        purchase.getItems().clear();
+        BigDecimal total = BigDecimal.ZERO;
+        for (PurchaseItemRequest itemRequest : request.items()) {
+            PurchaseItem item = construirDetalle(purchase, itemRequest);
+            purchase.getItems().add(item);
+            total = total.add(item.getSubtotal());
+        }
+        if (total.precision() > 15 || total.scale() > 2) {
+            throw new IllegalArgumentException("El total de la compra supera el límite permitido");
+        }
+        purchase.setTotal(total.setScale(2, RoundingMode.HALF_UP));
+        return toResponse(purchaseRepository.save(purchase));
+    }
+
+    @Override
+    public void delete(Long purchaseId, User usuario) {
+        validarUsuario(usuario);
+        if (purchaseId == null || purchaseId <= 0) {
+            throw new IllegalArgumentException("Debe indicar una compra válida");
+        }
+
+        Purchase purchase = purchaseRepository.findByIdForUpdate(purchaseId)
+                .orElseThrow(() -> new IllegalArgumentException("Compra no encontrada: " + purchaseId));
+
+        if (purchase.getStatus() != PurchaseStatus.PENDING_RECEIPT) {
+            throw new IllegalStateException(
+                    "Solo se pueden descartar compras pendientes. Las compras recibidas conservan su trazabilidad de inventario"
+            );
+        }
+        validarSucursalAutorizada(purchase.getSucursal().getId(), usuario);
+
+        if (inventoryMovementRepository.existsByTipoReferenciaAndReferenciaId(TIPO_REFERENCIA_COMPRA, purchaseId)) {
+            throw new IllegalStateException(
+                    "No se puede eliminar la compra porque tiene movimientos de inventario asociados"
+            );
+        }
+
+        // Purchase.items usa cascade ALL + orphanRemoval: los detalles se eliminan junto con la compra.
+        purchaseRepository.delete(purchase);
+    }
+
+    @Override
     public PurchaseResponse receive(Long purchaseId, User usuario) {
         validarUsuario(usuario);
 
