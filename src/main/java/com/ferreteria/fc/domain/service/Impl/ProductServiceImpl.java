@@ -15,6 +15,7 @@ import com.ferreteria.fc.domain.repository.StoreRepository;
 import com.ferreteria.fc.domain.repository.UnitOfMeasureRepository;
 import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.ProductService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.persistence.entity.Product;
 import com.ferreteria.fc.persistence.entity.ProductStock;
 import com.ferreteria.fc.persistence.entity.ProductUnit;
@@ -28,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.math.BigDecimal;
 
 @Service
@@ -43,6 +46,7 @@ public class ProductServiceImpl implements ProductService {
     private final UnitOfMeasureRepository unitOfMeasureRepository;
     private final ProductUnitRepository productUnitRepository;
     private final OrderRepository orderRepository;
+    private final AuditLogService auditLogService;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
@@ -53,7 +57,8 @@ public class ProductServiceImpl implements ProductService {
             ImageStorageService imageStorageService,
             UnitOfMeasureRepository unitOfMeasureRepository,
             ProductUnitRepository productUnitRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            AuditLogService auditLogService
     ) {
         this.imageStorageService= imageStorageService;
         this.productStockRepository = productStockRepository;
@@ -64,6 +69,7 @@ public class ProductServiceImpl implements ProductService {
         this.unitOfMeasureRepository = unitOfMeasureRepository;
         this.productUnitRepository = productUnitRepository;
         this.orderRepository = orderRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -120,6 +126,7 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         productStockRepository.saveAll(stocksIniciales);
+        recordProductChange(saved, "CREATED", null, "Producto creado");
 
         return productMapper.toResponse(saved);
     }
@@ -169,6 +176,8 @@ public class ProductServiceImpl implements ProductService {
                         )
                 );
 
+        Map<String, Object> previousValues = productAuditValues(product);
+
         /*
          * PUT = reemplazo completo
          */
@@ -202,9 +211,11 @@ public class ProductServiceImpl implements ProductService {
         }
         if (request.getUnit() != null) product.setUnit(request.getUnit());
 
-        return productMapper.toResponse(
-                productRepository.save(product)
-        );
+        Product saved = productRepository.save(product);
+        recordProductChange(saved,
+                !Boolean.TRUE.equals(saved.getActive()) ? "DEACTIVATED" : "UPDATED",
+                previousValues, "Producto actualizado");
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -219,6 +230,8 @@ public class ProductServiceImpl implements ProductService {
                                 "Producto no encontrado: " + id
                         )
                 );
+
+        Map<String, Object> previousValues = productAuditValues(product);
 
         /*
          * PATCH = solamente modificar
@@ -284,9 +297,11 @@ public class ProductServiceImpl implements ProductService {
             product.setUnit(request.getUnit());
         }
 
-        return productMapper.toResponse(
-                productRepository.save(product)
-        );
+        Product saved = productRepository.save(product);
+        recordProductChange(saved,
+                !Boolean.TRUE.equals(saved.getActive()) ? "DEACTIVATED" : "UPDATED",
+                previousValues, "Producto actualizado parcialmente");
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -298,6 +313,7 @@ public class ProductServiceImpl implements ProductService {
         if (!Boolean.TRUE.equals(unit.getActive())) {
             throw new IllegalStateException("No puedes asignar una unidad de medida inactiva como unidad base.");
         }
+        Map<String, Object> previousValues = productAuditValues(product);
         UnitOfMeasure previousBaseUnit = product.getBaseUnit();
         boolean changingBaseUnit = previousBaseUnit != null
                 && !previousBaseUnit.getId().equals(unitOfMeasureId);
@@ -330,7 +346,10 @@ public class ProductServiceImpl implements ProductService {
         basePresentation.setSaleAllowed(true);
         basePresentation.setActive(true);
         productUnitRepository.save(basePresentation);
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        recordProductChange(saved, "BASE_UNIT_CHANGED", previousValues,
+                "Unidad base del producto actualizada");
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -342,8 +361,10 @@ public class ProductServiceImpl implements ProductService {
 
         // Los productos con historial operativo se conservan para no romper
         // movimientos, pedidos, compras ni trazabilidad de inventario.
+        Map<String, Object> previousValues = productAuditValues(product);
         product.setActive(false);
-        productRepository.saveAndFlush(product);
+        Product saved = productRepository.saveAndFlush(product);
+        recordProductChange(saved, "DEACTIVATED", previousValues, "Producto desactivado");
     }
 
     @Override
@@ -453,6 +474,34 @@ public class ProductServiceImpl implements ProductService {
 
         }
 
+    }
+
+    private Map<String, Object> productAuditValues(Product product) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("sku", product.getSku());
+        values.put("name", product.getName());
+        values.put("price", product.getPrice());
+        values.put("wholesalePrice", product.getWholesalePrice());
+        values.put("wholesaleMinQuantity", product.getWholesaleMinQuantity());
+        values.put("active", product.getActive());
+        values.put("category", product.getCategory());
+        values.put("brand", product.getBrand());
+        values.put("baseUnit", product.getBaseUnit() != null ? product.getBaseUnit().getName() : null);
+        values.put("minimumSaleQuantity", product.getMinimumSaleQuantity());
+        values.put("saleQuantityIncrement", product.getSaleQuantityIncrement());
+        return values;
+    }
+
+    private void recordProductChange(
+            Product product,
+            String action,
+            Map<String, Object> previousValues,
+            String description
+    ) {
+        auditLogService.recordForCurrentUser(
+                "PRODUCTS", "PRODUCT", product.getId().toString(), action, null,
+                previousValues, productAuditValues(product), description, "WEB"
+        );
     }
 
     private ProductResponse toResponseWithStock(
