@@ -108,7 +108,7 @@ public class SupplierServiceImpl implements SupplierService {
         if (!changedFields.isEmpty()) {
             auditLogService.recordForCurrentUser(
                     "SUPPLIERS", "SUPPLIER", updated.getId().toString(),
-                    activoAnterior && !updated.getActivo() ? "DEACTIVATED" : "UPDATED",
+                    activoAnterior && !updated.getActivo() ? "DEACTIVATED" : !activoAnterior && updated.getActivo() ? "ACTIVATED" : "UPDATED",
                     null,
                     Map.of("changedFields", changedFields),
                     Map.of("changedFields", changedFields, "active", updated.getActivo()),
