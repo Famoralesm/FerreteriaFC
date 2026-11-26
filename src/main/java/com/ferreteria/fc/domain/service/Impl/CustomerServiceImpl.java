@@ -7,6 +7,7 @@ import com.ferreteria.fc.domain.repository.CiudadRepository;
 import com.ferreteria.fc.domain.repository.ComunaRepository;
 import com.ferreteria.fc.domain.repository.CustomerRepository;
 import com.ferreteria.fc.domain.service.CustomerService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.persistence.entity.Ciudad;
 import com.ferreteria.fc.persistence.entity.Comuna;
 import com.ferreteria.fc.persistence.entity.Customer;
@@ -14,6 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -23,17 +28,20 @@ public class CustomerServiceImpl implements CustomerService {
     private final CustomerMapper customerMapper;
     private final CiudadRepository ciudadRepository;
     private final ComunaRepository comunaRepository;
+    private final AuditLogService auditLogService;
 
     public CustomerServiceImpl(
             CustomerRepository customerRepository,
             CustomerMapper customerMapper,
             CiudadRepository ciudadRepository,
-            ComunaRepository comunaRepository
+            ComunaRepository comunaRepository,
+            AuditLogService auditLogService
     ) {
         this.customerRepository = customerRepository;
         this.customerMapper = customerMapper;
         this.ciudadRepository = ciudadRepository;
         this.comunaRepository = comunaRepository;
+        this.auditLogService = auditLogService;
     }
 
     public CustomerResponse createCustomer(CreateCustomerRequest request) {
@@ -76,6 +84,12 @@ public class CustomerServiceImpl implements CustomerService {
                 .build();
 
         Customer saved = customerRepository.save(customer);
+        auditLogService.recordForCurrentUser(
+                "CUSTOMERS", "CUSTOMER", saved.getId().toString(), "CREATED", null,
+                null, Map.of("active", saved.isActivo(), "capturedFields",
+                        List.of("rut", "nombre", "razonSocial", "giro", "direccion", "comuna", "ciudad", "email", "telefono")),
+                "Cliente creado (datos personales omitidos de la bitácora)", "WEB"
+        );
 
         return customerMapper.toResponse(saved);
     }
@@ -106,6 +120,17 @@ public class CustomerServiceImpl implements CustomerService {
                 .orElseThrow(() ->
                         new RuntimeException("Cliente no encontrado")
                 );
+
+        String rutAnterior = customer.getRut();
+        String nombreAnterior = customer.getNombre();
+        String razonSocialAnterior = customer.getRazonSocial();
+        String giroAnterior = customer.getGiro();
+        String direccionAnterior = customer.getDireccion();
+        String emailAnterior = customer.getEmail();
+        String telefonoAnterior = customer.getTelefono();
+        Long ciudadAnterior = customer.getCiudad() != null ? customer.getCiudad().getId() : null;
+        Long comunaAnterior = customer.getComuna() != null ? customer.getComuna().getId() : null;
+        boolean activoAnterior = customer.isActivo();
 
         String rut = normalizarRut(request.getRut());
 
@@ -148,6 +173,28 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         Customer updated = customerRepository.save(customer);
+        List<String> changedFields = new ArrayList<>();
+        if (!Objects.equals(rutAnterior, updated.getRut())) changedFields.add("rut");
+        if (!Objects.equals(nombreAnterior, updated.getNombre())) changedFields.add("nombre");
+        if (!Objects.equals(razonSocialAnterior, updated.getRazonSocial())) changedFields.add("razonSocial");
+        if (!Objects.equals(giroAnterior, updated.getGiro())) changedFields.add("giro");
+        if (!Objects.equals(direccionAnterior, updated.getDireccion())) changedFields.add("direccion");
+        if (!Objects.equals(emailAnterior, updated.getEmail())) changedFields.add("email");
+        if (!Objects.equals(telefonoAnterior, updated.getTelefono())) changedFields.add("telefono");
+        if (!Objects.equals(ciudadAnterior, updated.getCiudad() != null ? updated.getCiudad().getId() : null)) changedFields.add("ciudad");
+        if (!Objects.equals(comunaAnterior, updated.getComuna() != null ? updated.getComuna().getId() : null)) changedFields.add("comuna");
+        if (activoAnterior != updated.isActivo()) changedFields.add("activo");
+        if (!changedFields.isEmpty()) {
+            auditLogService.recordForCurrentUser(
+                    "CUSTOMERS", "CUSTOMER", updated.getId().toString(),
+                    activoAnterior != updated.isActivo() && !updated.isActivo() ? "DEACTIVATED" : "UPDATED",
+                    null,
+                    Map.of("changedFields", changedFields),
+                    Map.of("changedFields", changedFields, "active", updated.isActivo()),
+                    "Cliente actualizado; se registran los campos modificados, no sus datos personales",
+                    "WEB"
+            );
+        }
 
         return customerMapper.toResponse(updated);
     }
@@ -158,6 +205,11 @@ public class CustomerServiceImpl implements CustomerService {
             throw new RuntimeException("Cliente no encontrado");
         }
 
+        auditLogService.recordForCurrentUser(
+                "CUSTOMERS", "CUSTOMER", id.toString(), "DELETED", null,
+                Map.of("exists", true), Map.of("deleted", true),
+                "Cliente eliminado; los datos personales no se copian a la bitácora", "WEB"
+        );
         customerRepository.deleteById(id);
     }
 
