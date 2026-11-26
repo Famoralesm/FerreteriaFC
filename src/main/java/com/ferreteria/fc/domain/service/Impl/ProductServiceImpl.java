@@ -212,9 +212,11 @@ public class ProductServiceImpl implements ProductService {
         if (request.getUnit() != null) product.setUnit(request.getUnit());
 
         Product saved = productRepository.save(product);
-        recordProductChange(saved,
-                !Boolean.TRUE.equals(saved.getActive()) ? "DEACTIVATED" : "UPDATED",
-                previousValues, "Producto actualizado");
+        boolean wasActive = Boolean.TRUE.equals(previousValues.get("active"));
+        boolean isActive = Boolean.TRUE.equals(saved.getActive());
+        String auditAction = wasActive && !isActive ? "DEACTIVATED"
+                : !wasActive && isActive ? "ACTIVATED" : "UPDATED";
+        recordProductChange(saved, auditAction, previousValues, "Producto actualizado");
         return productMapper.toResponse(saved);
     }
 
@@ -298,9 +300,11 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product saved = productRepository.save(product);
-        recordProductChange(saved,
-                !Boolean.TRUE.equals(saved.getActive()) ? "DEACTIVATED" : "UPDATED",
-                previousValues, "Producto actualizado parcialmente");
+        boolean wasActive = Boolean.TRUE.equals(previousValues.get("active"));
+        boolean isActive = Boolean.TRUE.equals(saved.getActive());
+        String auditAction = wasActive && !isActive ? "DEACTIVATED"
+                : !wasActive && isActive ? "ACTIVATED" : "UPDATED";
+        recordProductChange(saved, auditAction, previousValues, "Producto actualizado parcialmente");
         return productMapper.toResponse(saved);
     }
 
