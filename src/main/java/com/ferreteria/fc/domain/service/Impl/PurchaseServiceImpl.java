@@ -6,6 +6,7 @@ import com.ferreteria.fc.domain.enums.PurchaseStatus;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.*;
 import com.ferreteria.fc.domain.service.PurchaseService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.dto.purchase.PurchaseItemRequest;
 import com.ferreteria.fc.dto.purchase.PurchaseItemResponse;
 import com.ferreteria.fc.dto.purchase.PurchaseRequest;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.LinkedHashMap;
 
 @Service
 @Transactional
@@ -38,6 +40,7 @@ public class PurchaseServiceImpl implements PurchaseService {
     private final ProductStockRepository productStockRepository;
     private final InventoryMovementRepository inventoryMovementRepository;
     private final InventoryCountRepository inventoryCountRepository;
+    private final AuditLogService auditLogService;
 
     public PurchaseServiceImpl(
             PurchaseRepository purchaseRepository,
@@ -47,7 +50,8 @@ public class PurchaseServiceImpl implements PurchaseService {
             ProductUnitRepository productUnitRepository,
             ProductStockRepository productStockRepository,
             InventoryMovementRepository inventoryMovementRepository,
-            InventoryCountRepository inventoryCountRepository
+            InventoryCountRepository inventoryCountRepository,
+            AuditLogService auditLogService
     ) {
         this.purchaseRepository = purchaseRepository;
         this.supplierRepository = supplierRepository;
@@ -57,6 +61,7 @@ public class PurchaseServiceImpl implements PurchaseService {
         this.productStockRepository = productStockRepository;
         this.inventoryMovementRepository = inventoryMovementRepository;
         this.inventoryCountRepository = inventoryCountRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -150,6 +155,13 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         // Registrar la compra no modifica ProductStock ni crea InventoryMovement.
         Purchase saved = purchaseRepository.save(purchase);
+        Map<String, Object> createdValues = purchaseAuditValues(saved);
+        createdValues.put("items", purchaseItemsAuditSnapshot(saved));
+        auditLogService.record(
+                "PURCHASES", "PURCHASE", saved.getId().toString(), "CREATED",
+                usuario, saved.getSucursal(), null, createdValues,
+                "Compra #" + saved.getId() + " registrada como pendiente de recepción", "WEB"
+        );
         return toResponse(saved);
     }
 
@@ -162,6 +174,8 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         Purchase purchase = purchaseRepository.findByIdForUpdate(purchaseId)
                 .orElseThrow(() -> new IllegalArgumentException("Compra no encontrada: " + purchaseId));
+        Map<String, Object> previousValues = purchaseAuditValues(purchase);
+        List<Map<String, Object>> previousItems = purchaseItemsAuditSnapshot(purchase);
 
         if (purchase.getStatus() != PurchaseStatus.PENDING_RECEIPT) {
             throw new IllegalStateException("Solo se pueden editar compras pendientes de recepción");
@@ -206,7 +220,15 @@ public class PurchaseServiceImpl implements PurchaseService {
             throw new IllegalArgumentException("El total de la compra supera el límite permitido");
         }
         purchase.setTotal(total.setScale(2, RoundingMode.HALF_UP));
-        return toResponse(purchaseRepository.save(purchase));
+        Purchase saved = purchaseRepository.save(purchase);
+        Map<String, Object> newValues = purchaseAuditValues(saved);
+        newValues.put("items", purchaseItemsAuditSnapshot(saved));
+        auditLogService.record(
+                "PURCHASES", "PURCHASE", saved.getId().toString(), "UPDATED",
+                usuario, saved.getSucursal(), previousValues, newValues,
+                "Compra #" + saved.getId() + " modificada antes de su recepción", "WEB"
+        );
+        return toResponse(saved);
     }
 
     @Override
@@ -232,6 +254,15 @@ public class PurchaseServiceImpl implements PurchaseService {
             );
         }
 
+        // Se conserva el evento antes de eliminar la compra pendiente.
+        auditLogService.record(
+                "PURCHASES", "PURCHASE", purchase.getId().toString(), "DELETED",
+                usuario, purchase.getSucursal(),
+                purchaseAuditValues(purchase),
+                Map.of("deleted", true),
+                "Compra pendiente #" + purchase.getId() + " descartada",
+                "WEB"
+        );
         // Purchase.items usa cascade ALL + orphanRemoval: los detalles se eliminan junto con la compra.
         purchaseRepository.delete(purchase);
     }
@@ -379,7 +410,49 @@ public class PurchaseServiceImpl implements PurchaseService {
         purchase.setReceivedAt(LocalDateTime.now());
 
         Purchase saved = purchaseRepository.save(purchase);
+        auditLogService.record(
+                "PURCHASES", "PURCHASE", saved.getId().toString(), "RECEIVED",
+                usuario, saved.getSucursal(),
+                Map.of("status", PurchaseStatus.PENDING_RECEIPT.name()),
+                Map.of(
+                        "status", PurchaseStatus.RECEIVED.name(),
+                        "receivedAt", saved.getReceivedAt().toString(),
+                        "total", saved.getTotal(),
+                        "movementCount", cantidadesPorProducto.size()
+                ),
+                "Compra #" + saved.getId() + " recibida; stock actualizado",
+                "WEB"
+        );
         return toResponse(saved);
+    }
+
+    private Map<String, Object> purchaseAuditValues(Purchase purchase) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("supplierId", purchase.getSupplier() != null ? purchase.getSupplier().getId() : null);
+        values.put("storeId", purchase.getSucursal() != null ? purchase.getSucursal().getId() : null);
+        values.put("documentType", purchase.getDocumentType());
+        values.put("documentNumber", purchase.getDocumentNumber());
+        values.put("purchaseDate", purchase.getPurchaseDate() != null ? purchase.getPurchaseDate().toString() : null);
+        values.put("status", purchase.getStatus() != null ? purchase.getStatus().name() : null);
+        values.put("total", purchase.getTotal());
+        values.put("itemCount", purchase.getItems() != null ? purchase.getItems().size() : 0);
+        return values;
+    }
+
+    private List<Map<String, Object>> purchaseItemsAuditSnapshot(Purchase purchase) {
+        if (purchase.getItems() == null) return List.of();
+        return purchase.getItems().stream().map(item -> {
+            Map<String, Object> values = new LinkedHashMap<>();
+            values.put("productId", item.getProduct() != null ? item.getProduct().getId() : null);
+            values.put("sku", item.getProductSkuSnapshot());
+            values.put("productName", item.getProductNameSnapshot());
+            values.put("presentation", item.getUnitNameSnapshot());
+            values.put("conversionFactor", item.getConversionFactorSnapshot());
+            values.put("quantity", item.getQuantity());
+            values.put("unitPurchasePrice", item.getUnitPurchasePrice());
+            values.put("subtotal", item.getSubtotal());
+            return values;
+        }).toList();
     }
 
     private void validarSucursalAutorizada(Long sucursalId, User usuario) {
