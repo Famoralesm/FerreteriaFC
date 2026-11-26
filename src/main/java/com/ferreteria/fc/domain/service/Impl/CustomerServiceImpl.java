@@ -86,7 +86,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer saved = customerRepository.save(customer);
         auditLogService.recordForCurrentUser(
                 "CUSTOMERS", "CUSTOMER", saved.getId().toString(), "CREATED", null,
-                null, Map.of("active", saved.isActivo(), "capturedFields",
+                null, Map.of("active", saved.getActivo(), "capturedFields",
                         List.of("rut", "nombre", "razonSocial", "giro", "direccion", "comuna", "ciudad", "email", "telefono")),
                 "Cliente creado (datos personales omitidos de la bitácora)", "WEB"
         );
@@ -130,7 +130,7 @@ public class CustomerServiceImpl implements CustomerService {
         String telefonoAnterior = customer.getTelefono();
         Long ciudadAnterior = customer.getCiudad() != null ? customer.getCiudad().getId() : null;
         Long comunaAnterior = customer.getComuna() != null ? customer.getComuna().getId() : null;
-        boolean activoAnterior = customer.isActivo();
+        boolean activoAnterior = customer.getActivo();
 
         String rut = normalizarRut(request.getRut());
 
@@ -183,14 +183,14 @@ public class CustomerServiceImpl implements CustomerService {
         if (!Objects.equals(telefonoAnterior, updated.getTelefono())) changedFields.add("telefono");
         if (!Objects.equals(ciudadAnterior, updated.getCiudad() != null ? updated.getCiudad().getId() : null)) changedFields.add("ciudad");
         if (!Objects.equals(comunaAnterior, updated.getComuna() != null ? updated.getComuna().getId() : null)) changedFields.add("comuna");
-        if (activoAnterior != updated.isActivo()) changedFields.add("activo");
+        if (activoAnterior != updated.getActivo()) changedFields.add("activo");
         if (!changedFields.isEmpty()) {
             auditLogService.recordForCurrentUser(
                     "CUSTOMERS", "CUSTOMER", updated.getId().toString(),
-                    activoAnterior != updated.isActivo() && !updated.isActivo() ? "DEACTIVATED" : "UPDATED",
+                    activoAnterior != updated.getActivo() && !updated.getActivo() ? "DEACTIVATED" : "UPDATED",
                     null,
                     Map.of("changedFields", changedFields),
-                    Map.of("changedFields", changedFields, "active", updated.isActivo()),
+                    Map.of("changedFields", changedFields, "active", updated.getActivo()),
                     "Cliente actualizado; se registran los campos modificados, no sus datos personales",
                     "WEB"
             );
