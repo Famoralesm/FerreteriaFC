@@ -107,13 +107,13 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_audit_logs_user') THEN
         ALTER TABLE audit_logs
             ADD CONSTRAINT fk_audit_logs_user
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_audit_logs_store') THEN
         ALTER TABLE audit_logs
             ADD CONSTRAINT fk_audit_logs_store
-            FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL;
+            FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT;
     END IF;
 END $$;
 
