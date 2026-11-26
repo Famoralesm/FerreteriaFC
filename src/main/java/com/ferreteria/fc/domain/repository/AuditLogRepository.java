@@ -9,7 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 
-public interface AuditLogRepository extends Repository<AuditLog, Long> {\n\n    AuditLog save(AuditLog event);
+public interface AuditLogRepository extends Repository<AuditLog, Long> {
+
+    AuditLog save(AuditLog event);
 
     @Query("""
             SELECT log
