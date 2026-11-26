@@ -58,7 +58,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .email(request.getEmail()).activo(request.getActivo() == null ? true : request.getActivo()).build());
         auditLogService.recordForCurrentUser(
                 "SUPPLIERS", "SUPPLIER", saved.getId().toString(), "CREATED", null,
-                null, Map.of("active", saved.isActivo(), "capturedFields",
+                null, Map.of("active", saved.getActivo(), "capturedFields",
                         List.of("rut", "nombre", "razonSocial", "giro", "direccion", "ciudad", "comuna", "telefono", "email")),
                 "Proveedor creado (datos de contacto omitidos de la bitácora)", "WEB"
         );
@@ -81,7 +81,7 @@ public class SupplierServiceImpl implements SupplierService {
         String emailAnterior = supplier.getEmail();
         Long ciudadAnterior = supplier.getCiudad() != null ? supplier.getCiudad().getId() : null;
         Long comunaAnterior = supplier.getComuna() != null ? supplier.getComuna().getId() : null;
-        boolean activoAnterior = supplier.isActivo();
+        boolean activoAnterior = supplier.getActivo();
 
         supplier.setRut(rut);
         supplier.setNombre(request.getNombre().trim());
@@ -104,14 +104,14 @@ public class SupplierServiceImpl implements SupplierService {
         if (!Objects.equals(emailAnterior, updated.getEmail())) changedFields.add("email");
         if (!Objects.equals(ciudadAnterior, updated.getCiudad() != null ? updated.getCiudad().getId() : null)) changedFields.add("ciudad");
         if (!Objects.equals(comunaAnterior, updated.getComuna() != null ? updated.getComuna().getId() : null)) changedFields.add("comuna");
-        if (activoAnterior != updated.isActivo()) changedFields.add("activo");
+        if (activoAnterior != updated.getActivo()) changedFields.add("activo");
         if (!changedFields.isEmpty()) {
             auditLogService.recordForCurrentUser(
                     "SUPPLIERS", "SUPPLIER", updated.getId().toString(),
-                    activoAnterior && !updated.isActivo() ? "DEACTIVATED" : "UPDATED",
+                    activoAnterior && !updated.getActivo() ? "DEACTIVATED" : "UPDATED",
                     null,
                     Map.of("changedFields", changedFields),
-                    Map.of("changedFields", changedFields, "active", updated.isActivo()),
+                    Map.of("changedFields", changedFields, "active", updated.getActivo()),
                     "Proveedor actualizado; se registran los campos modificados, no sus datos de contacto",
                     "WEB"
             );
@@ -129,7 +129,7 @@ public class SupplierServiceImpl implements SupplierService {
     @Override
     public void deactivate(Long id) {
         Supplier supplier = get(id);
-        boolean wasActive = supplier.isActivo();
+        boolean wasActive = supplier.getActivo();
         supplier.setActivo(false);
         supplierRepository.save(supplier);
         if (wasActive) {
