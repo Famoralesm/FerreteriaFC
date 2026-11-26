@@ -31,6 +31,8 @@ public interface InventoryMovementRepository
 
     boolean existsByProductoIdAndSucursalId(Long productoId, Long sucursalId);
 
+    boolean existsByTipoReferenciaAndReferenciaId(String tipoReferencia, Long referenciaId);
+
     List<InventoryMovement> findByTipoReferenciaAndReferenciaId(
             String tipoReferencia,
             Long referenciaId
