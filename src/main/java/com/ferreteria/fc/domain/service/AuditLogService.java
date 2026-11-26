@@ -1,0 +1,129 @@
+package com.ferreteria.fc.domain.service;
+
+import com.ferreteria.fc.domain.dto.response.AuditLogResponse;
+import com.ferreteria.fc.domain.repository.AuditLogRepository;
+import com.ferreteria.fc.persistence.entity.AuditLog;
+import com.ferreteria.fc.persistence.entity.Store;
+import com.ferreteria.fc.persistence.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+@Service
+public class AuditLogService {
+
+    private static final Set<String> SENSITIVE_KEYS = Set.of(
+            "password", "contrasena", "token", "access_token",
+            "refresh_token", "secret", "authorization", "credential"
+    );
+
+    private final AuditLogRepository repository;
+
+    public AuditLogService(AuditLogRepository repository) {
+        this.repository = repository;
+    }
+
+    /**
+     * Debe invocarse dentro de la transacción de negocio para que ambos cambios
+     * se confirmen o reviertan juntos.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public AuditLog record(
+            String module,
+            String entityType,
+            String entityId,
+            String action,
+            User actor,
+            Store store,
+            Map<String, Object> oldValues,
+            Map<String, Object> newValues,
+            String description,
+            String origin
+    ) {
+        if (module == null || module.isBlank()
+                || entityType == null || entityType.isBlank()
+                || action == null || action.isBlank()) {
+            throw new IllegalArgumentException("Módulo, entidad y acción son obligatorios para auditar.");
+        }
+
+        AuditLog event = new AuditLog();
+        event.setUser(actor);
+        event.setUserNameSnapshot(actor != null ? actor.getName() : "Proceso automático");
+        event.setStore(store);
+        event.setStoreNameSnapshot(store != null ? store.getNombre() : null);
+        event.setModule(module.trim().toUpperCase(Locale.ROOT));
+        event.setEntityType(entityType.trim().toUpperCase(Locale.ROOT));
+        event.setEntityId(entityId);
+        event.setAction(action.trim().toUpperCase(Locale.ROOT));
+        event.setOldValues(sanitize(oldValues));
+        event.setNewValues(sanitize(newValues));
+        event.setDescription(description);
+        event.setOrigin(origin == null || origin.isBlank() ? "SYSTEM" : origin.trim().toUpperCase(Locale.ROOT));
+        return repository.save(event);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AuditLogResponse> search(
+            String module,
+            String entityType,
+            String entityId,
+            Long userId,
+            Long storeId,
+            String action,
+            LocalDateTime fromDate,
+            LocalDateTime toDate,
+            Pageable pageable
+    ) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("La fecha inicial no puede ser posterior a la fecha final.");
+        }
+
+        return repository.search(
+                normalize(module), normalize(entityType), normalize(entityId),
+                userId, storeId, normalize(action), fromDate, toDate, pageable
+        ).map(this::toResponse);
+    }
+
+    private AuditLogResponse toResponse(AuditLog event) {
+        return new AuditLogResponse(
+                event.getId(),
+                event.getEventUuid(),
+                event.getUser() != null ? event.getUser().getId() : null,
+                event.getUserNameSnapshot(),
+                event.getStore() != null ? event.getStore().getId() : null,
+                event.getStoreNameSnapshot(),
+                event.getModule(),
+                event.getEntityType(),
+                event.getEntityId(),
+                event.getAction(),
+                event.getOldValues(),
+                event.getNewValues(),
+                event.getDescription(),
+                event.getOrigin(),
+                event.getCreatedAt()
+        );
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private Map<String, Object> sanitize(Map<String, Object> values) {
+        if (values == null || values.isEmpty()) return null;
+        Map<String, Object> safe = new LinkedHashMap<>();
+        values.forEach((key, value) -> {
+            if (key != null && !SENSITIVE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                safe.put(key, value);
+            }
+        });
+        return safe.isEmpty() ? null : safe;
+    }
+}
