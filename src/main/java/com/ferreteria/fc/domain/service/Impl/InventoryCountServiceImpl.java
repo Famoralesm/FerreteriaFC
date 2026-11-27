@@ -24,6 +24,7 @@ public class InventoryCountServiceImpl implements InventoryCountService {
 
     public InventoryCountServiceImpl(InventoryCountRepository countRepository,
             InventoryCountDetailRepository detailRepository, ProductStockRepository stockRepository,
+            StoreRepository storeRepository, InventoryMovementRepository movementRepository) {
         this.countRepository = countRepository;
         this.detailRepository = detailRepository;
         this.stockRepository = stockRepository;
