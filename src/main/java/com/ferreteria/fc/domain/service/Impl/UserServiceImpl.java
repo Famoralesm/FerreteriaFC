@@ -73,6 +73,9 @@ public class UserServiceImpl implements UserService {
         }
 
         Store sucursal = resolveStore(request.getStoreId());
+        if (!Boolean.TRUE.equals(sucursal.getActiva())) {
+            throw new IllegalArgumentException("No se puede asignar un usuario a una sucursal inactiva");
+        }
         User user = User.builder()
                 .name(request.getName().trim())
                 .email(email)
@@ -158,6 +161,9 @@ public class UserServiceImpl implements UserService {
 
 
         Store sucursal = resolveStore(request.getStoreId());
+        if (!Boolean.TRUE.equals(sucursal.getActiva()) && !Objects.equals(previousStoreId, sucursal.getId())) {
+            throw new IllegalArgumentException("No se puede asignar un usuario a una sucursal inactiva");
+        }
         user.setName(request.getName().trim());
         user.setEmail(email);
         user.setRole(newRole);
@@ -237,9 +243,6 @@ public class UserServiceImpl implements UserService {
         }
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
-        if (!Boolean.TRUE.equals(store.getActiva())) {
-            throw new IllegalArgumentException("No se puede asignar un usuario a una sucursal inactiva");
-        }
         return store;
     }
 
