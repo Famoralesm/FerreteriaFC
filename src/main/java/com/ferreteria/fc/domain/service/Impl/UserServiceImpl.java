@@ -7,6 +7,7 @@ import com.ferreteria.fc.domain.enums.ImageKind;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UserRepository;
 import com.ferreteria.fc.domain.service.ImageStorageService;
+import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.domain.service.UserService;
 import com.ferreteria.fc.persistence.entity.User;
 import com.ferreteria.fc.domain.dto.request.UpdateMyProfileRequest;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -31,14 +33,17 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ImageStorageService imageStorageService;
+    private final AuditLogService auditLogService;
     public UserServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            ImageStorageService imageStorageService
+            ImageStorageService imageStorageService,
+            AuditLogService auditLogService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.imageStorageService = imageStorageService;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -68,7 +73,13 @@ public class UserServiceImpl implements UserService {
                         request.getActive())
                 .build();
 
-        return UserMapper.toResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditLogService.recordForCurrentUser(
+                "USERS", "USER", saved.getId().toString(), "CREATED", null,
+                null, Map.of("role", saved.getRole().name(), "active", saved.isActive()),
+                "Usuario creado", "WEB"
+        );
+        return UserMapper.toResponse(saved);
     }
 
     @Override
@@ -90,6 +101,8 @@ public class UserServiceImpl implements UserService {
     public UserResponse update(Long id, UserRequest request) {
 
         User user = findUser(id);
+        Role previousRole = user.getRole();
+        boolean previousActive = user.isActive();
 
         String email = request.getEmail().trim().toLowerCase();
 
@@ -142,7 +155,16 @@ public class UserServiceImpl implements UserService {
             );
         }
 
-        return UserMapper.toResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        String action = previousActive && !saved.isActive() ? "DEACTIVATED"
+                : !previousActive && saved.isActive() ? "ACTIVATED" : "UPDATED";
+        auditLogService.recordForCurrentUser(
+                "USERS", "USER", saved.getId().toString(), action, null,
+                Map.of("role", previousRole.name(), "active", previousActive),
+                Map.of("role", saved.getRole().name(), "active", saved.isActive()),
+                "Usuario actualizado", "WEB"
+        );
+        return UserMapper.toResponse(saved);
     }
 
     @Override
@@ -162,6 +184,11 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        auditLogService.recordForCurrentUser(
+                "USERS", "USER", user.getId().toString(), "DELETED", null,
+                Map.of("role", user.getRole().name(), "active", user.isActive()),
+                null, "Usuario eliminado", "WEB"
+        );
         userRepository.delete(user);
     }
 
@@ -190,11 +217,18 @@ public class UserServiceImpl implements UserService {
 
         User user = requireUser(email);
 
+        String previousName = user.getName();
         user.setName(request.getName().trim());
-
-        return UserMapper.toResponse(
-                userRepository.save(user)
-        );
+        User saved = userRepository.save(user);
+        if (!java.util.Objects.equals(previousName, saved.getName())) {
+            auditLogService.recordForCurrentUser(
+                    "USERS", "USER", saved.getId().toString(), "UPDATED", null,
+                    Map.of("profileNameChanged", false),
+                    Map.of("profileNameChanged", true),
+                    "Perfil de usuario actualizado", "WEB"
+            );
+        }
+        return UserMapper.toResponse(saved);
 
     }
 
