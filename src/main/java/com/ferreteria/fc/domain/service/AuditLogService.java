@@ -2,6 +2,11 @@ package com.ferreteria.fc.domain.service;
 
 import com.ferreteria.fc.domain.dto.response.AuditLogResponse;
 import com.ferreteria.fc.domain.repository.AuditLogRepository;
+import com.ferreteria.fc.domain.repository.CustomerRepository;
+import com.ferreteria.fc.domain.repository.SupplierRepository;
+import com.ferreteria.fc.domain.enums.Role;
+import com.ferreteria.fc.persistence.entity.Customer;
+import com.ferreteria.fc.persistence.entity.Supplier;
 import com.ferreteria.fc.domain.repository.OrderRepository;
 import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.UserRepository;
@@ -38,17 +43,23 @@ public class AuditLogService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final CustomerRepository customerRepository;
+    private final SupplierRepository supplierRepository;
 
     public AuditLogService(
             AuditLogRepository repository,
             UserRepository userRepository,
             OrderRepository orderRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            CustomerRepository customerRepository,
+            SupplierRepository supplierRepository
     ) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
+        this.customerRepository = customerRepository;
+        this.supplierRepository = supplierRepository;
     }
 
     /**
@@ -121,6 +132,9 @@ public class AuditLogService {
             String productSku,
             Long userId,
             String userName,
+            String customerRut, String customerQuery, String customerCommune, String customerCity,
+            String userQuery, String userRole,
+            String supplierQuery, String supplierRut, String supplierCommune, String supplierCity,
             Long storeId,
             String action,
             LocalDateTime fromDate,
@@ -166,8 +180,30 @@ public class AuditLogService {
             }
         }
 
+        List<String> customerIds = resolveEntityIds(
+                collectIds(customerRut, customerRepository.findByRutContainingIgnoreCase(safe(customerRut))),
+                collectIds(customerQuery, customerRepository.findByNombreContainingIgnoreCase(safe(customerQuery))),
+                collectIds(customerCommune, customerRepository.findByComunaNombreContainingIgnoreCase(safe(customerCommune))),
+                collectIds(customerCity, customerRepository.findByCiudadNombreContainingIgnoreCase(safe(customerCity)))
+        );
+        List<String> userIds = resolveEntityIds(
+                collectIds(userQuery, userRepository.findByNameContainingIgnoreCase(safe(userQuery))),
+                collectIds(userRole, parseRoleUsers(userRole))
+        );
+        List<String> supplierIds = resolveEntityIds(
+                collectIds(supplierQuery, supplierRepository.findByNombreContainingIgnoreCase(safe(supplierQuery))),
+                collectIds(supplierRut, supplierRepository.findByRutContainingIgnoreCase(safe(supplierRut))),
+                collectIds(supplierCommune, supplierRepository.findByComunaNombreContainingIgnoreCase(safe(supplierCommune))),
+                collectIds(supplierCity, supplierRepository.findByCiudadNombreContainingIgnoreCase(safe(supplierCity)))
+        );
+        if (customerIds != null && customerIds.isEmpty() || userIds != null && userIds.isEmpty()
+                || supplierIds != null && supplierIds.isEmpty()) return Page.empty(pageable);
+
         final String orderIdFilter = resolvedOrderId;
         final List<String> productIdFilter = matchingProductIds;
+        final List<String> customerIdFilter = customerIds;
+        final List<String> userIdFilter = userIds;
+        final List<String> supplierIdFilter = supplierIds;
         Specification<AuditLog> specification = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -188,9 +224,10 @@ public class AuditLogService {
             if (orderIdFilter != null) {
                 predicates.add(criteriaBuilder.equal(root.get("entityId"), orderIdFilter));
             }
-            if (productIdFilter != null) {
-                predicates.add(root.get("entityId").in(productIdFilter));
-            }
+            if (productIdFilter != null) predicates.add(root.get("entityId").in(productIdFilter));
+            if (customerIdFilter != null) predicates.add(root.get("entityId").in(customerIdFilter));
+            if (userIdFilter != null) predicates.add(root.get("entityId").in(userIdFilter));
+            if (supplierIdFilter != null) predicates.add(root.get("entityId").in(supplierIdFilter));
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
             }
@@ -216,6 +253,33 @@ public class AuditLogService {
         };
 
         return repository.findAll(specification, pageable).map(this::toResponse);
+    }
+
+    private String safe(String value) { return value == null ? "" : value.trim(); }
+
+    private <T> List<String> collectIds(String filter, List<T> values) {
+        if (filter == null || filter.isBlank()) return null;
+        return values.stream().map(value -> {
+            try { return String.valueOf(value.getClass().getMethod("getId").invoke(value)); }
+            catch (ReflectiveOperationException ex) { throw new IllegalStateException(ex); }
+        }).toList();
+    }
+
+    @SafeVarargs
+    private final List<String> resolveEntityIds(List<String>... criteria) {
+        List<java.util.Set<String>> active = java.util.Arrays.stream(criteria)
+                .filter(java.util.Objects::nonNull)
+                .map(java.util.LinkedHashSet::new).toList();
+        if (active.isEmpty()) return null;
+        java.util.Set<String> result = new java.util.LinkedHashSet<>(active.get(0));
+        active.stream().skip(1).forEach(result::retainAll);
+        return List.copyOf(result);
+    }
+
+    private List<com.ferreteria.fc.persistence.entity.User> parseRoleUsers(String role) {
+        if (role == null || role.isBlank()) return List.of();
+        try { return userRepository.findByRole(Role.valueOf(role.trim().toUpperCase(Locale.ROOT))); }
+        catch (IllegalArgumentException ex) { return List.of(); }
     }
 
     private AuditLogResponse toResponse(AuditLog event) {
