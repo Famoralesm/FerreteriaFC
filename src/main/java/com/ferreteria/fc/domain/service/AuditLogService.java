@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.Set;
 
 @Service
@@ -181,20 +182,20 @@ public class AuditLogService {
         }
 
         List<String> customerIds = resolveEntityIds(
-                collectIds(customerRut, customerRepository.findByRutContainingIgnoreCase(safe(customerRut))),
-                collectIds(customerQuery, customerRepository.findByNombreContainingIgnoreCase(safe(customerQuery))),
-                collectIds(customerCommune, customerRepository.findByComunaNombreContainingIgnoreCase(safe(customerCommune))),
-                collectIds(customerCity, customerRepository.findByCiudadNombreContainingIgnoreCase(safe(customerCity)))
+                collectIds(customerRut, customerRut == null || customerRut.isBlank() ? List.of() : customerRepository.findByRutContainingIgnoreCase(safe(customerRut)), Customer::getId),
+                collectIds(customerQuery, customerQuery == null || customerQuery.isBlank() ? List.of() : customerRepository.findByNombreContainingIgnoreCase(safe(customerQuery)), Customer::getId),
+                collectIds(customerCommune, customerCommune == null || customerCommune.isBlank() ? List.of() : customerRepository.findByComunaNombreContainingIgnoreCase(safe(customerCommune)), Customer::getId),
+                collectIds(customerCity, customerCity == null || customerCity.isBlank() ? List.of() : customerRepository.findByCiudadNombreContainingIgnoreCase(safe(customerCity)), Customer::getId)
         );
         List<String> userIds = resolveEntityIds(
-                collectIds(userQuery, userRepository.findByNameContainingIgnoreCase(safe(userQuery))),
-                collectIds(userRole, parseRoleUsers(userRole))
+                collectIds(userQuery, userQuery == null || userQuery.isBlank() ? List.of() : userRepository.findByNameContainingIgnoreCase(safe(userQuery)), User::getId),
+                collectIds(userRole, parseRoleUsers(userRole), User::getId)
         );
         List<String> supplierIds = resolveEntityIds(
-                collectIds(supplierQuery, supplierRepository.findByNombreContainingIgnoreCase(safe(supplierQuery))),
-                collectIds(supplierRut, supplierRepository.findByRutContainingIgnoreCase(safe(supplierRut))),
-                collectIds(supplierCommune, supplierRepository.findByComunaNombreContainingIgnoreCase(safe(supplierCommune))),
-                collectIds(supplierCity, supplierRepository.findByCiudadNombreContainingIgnoreCase(safe(supplierCity)))
+                collectIds(supplierQuery, supplierQuery == null || supplierQuery.isBlank() ? List.of() : supplierRepository.findByNombreContainingIgnoreCase(safe(supplierQuery)), Supplier::getId),
+                collectIds(supplierRut, supplierRut == null || supplierRut.isBlank() ? List.of() : supplierRepository.findByRutContainingIgnoreCase(safe(supplierRut)), Supplier::getId),
+                collectIds(supplierCommune, supplierCommune == null || supplierCommune.isBlank() ? List.of() : supplierRepository.findByComunaNombreContainingIgnoreCase(safe(supplierCommune)), Supplier::getId),
+                collectIds(supplierCity, supplierCity == null || supplierCity.isBlank() ? List.of() : supplierRepository.findByCiudadNombreContainingIgnoreCase(safe(supplierCity)), Supplier::getId)
         );
         if (customerIds != null && customerIds.isEmpty() || userIds != null && userIds.isEmpty()
                 || supplierIds != null && supplierIds.isEmpty()) return Page.empty(pageable);
@@ -257,12 +258,9 @@ public class AuditLogService {
 
     private String safe(String value) { return value == null ? "" : value.trim(); }
 
-    private <T> List<String> collectIds(String filter, List<T> values) {
+    private <T> List<String> collectIds(String filter, List<T> values, Function<T, ?> idExtractor) {
         if (filter == null || filter.isBlank()) return null;
-        return values.stream().map(value -> {
-            try { return String.valueOf(value.getClass().getMethod("getId").invoke(value)); }
-            catch (ReflectiveOperationException ex) { throw new IllegalStateException(ex); }
-        }).toList();
+        return values.stream().map(value -> String.valueOf(idExtractor.apply(value))).toList();
     }
 
     @SafeVarargs
