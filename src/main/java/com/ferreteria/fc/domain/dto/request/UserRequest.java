@@ -27,5 +27,8 @@ public class UserRequest {
     @NotNull(message = "Debe seleccionar un perfil")
     private Role role;
 
+    @NotNull(message = "Debe seleccionar una sucursal")
+    private Long storeId;
+
     private Boolean active;
 }
