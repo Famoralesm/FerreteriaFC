@@ -132,7 +132,7 @@ public class AuditLogService {
 
         String resolvedOrderId = null;
         if (orderNumber != null && !orderNumber.isBlank()) {
-            resolvedOrderId = orderRepository.findByOrderNumber(orderNumber.trim())
+            resolvedOrderId = orderRepository.findByOrderNumber(orderNumber.trim().toUpperCase(Locale.ROOT))
                     .map(order -> order.getId().toString())
                     .orElse("__NO_MATCHING_ORDER__");
         }
@@ -140,17 +140,26 @@ public class AuditLogService {
         List<String> matchingProductIds = null;
         if ((productQuery != null && !productQuery.isBlank())
                 || (productSku != null && !productSku.isBlank())) {
-            java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+            java.util.Set<String> ids = null;
             if (productQuery != null && !productQuery.isBlank()) {
-                productRepository.findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
+                ids = productRepository.findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
                                 productQuery.trim(), productQuery.trim())
-                        .forEach(product -> ids.add(product.getId().toString()));
+                        .stream()
+                        .map(product -> product.getId().toString())
+                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
             }
             if (productSku != null && !productSku.isBlank()) {
-                productRepository.findBySkuContainingIgnoreCase(productSku.trim())
-                        .forEach(product -> ids.add(product.getId().toString()));
+                java.util.Set<String> skuIds = productRepository.findBySkuContainingIgnoreCase(productSku.trim())
+                        .stream()
+                        .map(product -> product.getId().toString())
+                        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                if (ids == null) {
+                    ids = skuIds;
+                } else {
+                    ids.retainAll(skuIds);
+                }
             }
-            matchingProductIds = List.copyOf(ids);
+            matchingProductIds = ids == null ? List.of() : List.copyOf(ids);
             if (matchingProductIds.isEmpty()) {
                 return Page.empty(pageable);
             }
