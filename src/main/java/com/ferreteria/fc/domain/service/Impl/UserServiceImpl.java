@@ -143,7 +143,7 @@ public class UserServiceImpl implements UserService {
 
         user.setName(request.getName().trim());
         user.setEmail(email);
-        user.setRole(request.getRole());
+        user.setRole(newRole);
         user.setActive(newActive);
 
 
