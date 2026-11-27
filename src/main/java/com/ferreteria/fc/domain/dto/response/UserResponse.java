@@ -15,4 +15,6 @@ public class UserResponse {
     private String role;
     private boolean active;
     private String avatarUrl;
+    private Long storeId;
+    private String storeName;
 }
