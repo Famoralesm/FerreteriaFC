@@ -6,6 +6,8 @@ import com.ferreteria.fc.domain.dto.response.UserResponse;
 import com.ferreteria.fc.domain.enums.ImageKind;
 import com.ferreteria.fc.domain.enums.Role;
 import com.ferreteria.fc.domain.repository.UserRepository;
+import com.ferreteria.fc.domain.repository.StoreRepository;
+import com.ferreteria.fc.persistence.entity.Store;
 import com.ferreteria.fc.domain.service.ImageStorageService;
 import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.domain.service.UserService;
@@ -25,6 +27,9 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -34,16 +39,19 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final ImageStorageService imageStorageService;
     private final AuditLogService auditLogService;
+    private final StoreRepository storeRepository;
     public UserServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             ImageStorageService imageStorageService,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            StoreRepository storeRepository
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.imageStorageService = imageStorageService;
         this.auditLogService = auditLogService;
+        this.storeRepository = storeRepository;
     }
 
     @Override
@@ -64,6 +72,7 @@ public class UserServiceImpl implements UserService {
             );
         }
 
+        Store sucursal = resolveStore(request.getStoreId());
         User user = User.builder()
                 .name(request.getName().trim())
                 .email(email)
@@ -71,12 +80,15 @@ public class UserServiceImpl implements UserService {
                 .role(request.getRole())
                 .active(request.getActive() == null ||
                         request.getActive())
+                .sucursal(sucursal)
                 .build();
 
         User saved = userRepository.save(user);
         auditLogService.recordForCurrentUser(
                 "USERS", "USER", saved.getId().toString(), "CREATED", null,
-                null, Map.of("role", saved.getRole().name(), "active", saved.isActive()),
+                null, Map.of("name", saved.getName(), "role", saved.getRole().name(),
+                        "active", saved.isActive(), "sucursal", sucursal.getNombre(),
+                        "changedFields", List.of("name", "email", "role", "active", "sucursal")),
                 "Usuario creado", "WEB"
         );
         return UserMapper.toResponse(saved);
@@ -103,6 +115,10 @@ public class UserServiceImpl implements UserService {
         User user = findUser(id);
         Role previousRole = user.getRole();
         boolean previousActive = user.isActive();
+        String previousName = user.getName();
+        String previousEmail = user.getEmail();
+        Long previousStoreId = user.getSucursal() != null ? user.getSucursal().getId() : null;
+        String previousStoreName = user.getSucursal() != null ? user.getSucursal().getNombre() : null;
 
         String email = request.getEmail().trim().toLowerCase();
 
@@ -141,10 +157,12 @@ public class UserServiceImpl implements UserService {
 
 
 
+        Store sucursal = resolveStore(request.getStoreId());
         user.setName(request.getName().trim());
         user.setEmail(email);
         user.setRole(newRole);
         user.setActive(newActive);
+        user.setSucursal(sucursal);
 
 
         if (request.getPassword() != null &&
@@ -158,12 +176,33 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         String action = previousActive && !saved.isActive() ? "DEACTIVATED"
                 : !previousActive && saved.isActive() ? "ACTIVATED" : "UPDATED";
-        auditLogService.recordForCurrentUser(
-                "USERS", "USER", saved.getId().toString(), action, null,
-                Map.of("role", previousRole.name(), "active", previousActive),
-                Map.of("role", saved.getRole().name(), "active", saved.isActive()),
-                "Usuario actualizado", "WEB"
-        );
+        List<String> changedFields = new ArrayList<>();
+        if (!Objects.equals(previousName, saved.getName())) changedFields.add("name");
+        if (!Objects.equals(previousEmail, saved.getEmail())) changedFields.add("email");
+        if (previousRole != saved.getRole()) changedFields.add("role");
+        if (previousActive != saved.isActive()) changedFields.add("active");
+        if (!Objects.equals(previousStoreId, saved.getSucursal() != null ? saved.getSucursal().getId() : null)) changedFields.add("sucursal");
+        if (request.getPassword() != null && !request.getPassword().isBlank()) changedFields.add("password");
+        if (!changedFields.isEmpty()) {
+            Map<String, Object> oldValues = new LinkedHashMap<>();
+            oldValues.put("name", previousName);
+            oldValues.put("role", previousRole.name());
+            oldValues.put("active", previousActive);
+            oldValues.put("sucursal", previousStoreName);
+            oldValues.put("changedFields", changedFields);
+
+            Map<String, Object> newValues = new LinkedHashMap<>();
+            newValues.put("name", saved.getName());
+            newValues.put("role", saved.getRole().name());
+            newValues.put("active", saved.isActive());
+            newValues.put("sucursal", saved.getSucursal() != null ? saved.getSucursal().getNombre() : null);
+            newValues.put("changedFields", changedFields);
+
+            auditLogService.recordForCurrentUser(
+                    "USERS", "USER", saved.getId().toString(), action, null,
+                    oldValues, newValues, "Usuario actualizado", "WEB"
+            );
+        }
         return UserMapper.toResponse(saved);
     }
 
@@ -190,6 +229,18 @@ public class UserServiceImpl implements UserService {
                 null, "Usuario eliminado", "WEB"
         );
         userRepository.delete(user);
+    }
+
+    private Store resolveStore(Long storeId) {
+        if (storeId == null) {
+            throw new IllegalArgumentException("Debe seleccionar una sucursal");
+        }
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
+        if (!Boolean.TRUE.equals(store.getActiva())) {
+            throw new IllegalArgumentException("No se puede asignar un usuario a una sucursal inactiva");
+        }
+        return store;
     }
 
     private User findUser(Long id) {
