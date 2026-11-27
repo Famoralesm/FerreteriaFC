@@ -6,14 +6,12 @@ import com.ferreteria.fc.domain.dto.response.*;
 import com.ferreteria.fc.domain.enums.*;
 import com.ferreteria.fc.domain.repository.*;
 import com.ferreteria.fc.domain.service.InventoryCountService;
-import com.ferreteria.fc.domain.service.AuditLogService;
 import com.ferreteria.fc.persistence.entity.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.math.BigDecimal;
-import java.util.Map;
 
 @Service
 @Transactional
@@ -23,18 +21,14 @@ public class InventoryCountServiceImpl implements InventoryCountService {
     private final ProductStockRepository stockRepository;
     private final StoreRepository storeRepository;
     private final InventoryMovementRepository movementRepository;
-    private final AuditLogService auditLogService;
 
     public InventoryCountServiceImpl(InventoryCountRepository countRepository,
             InventoryCountDetailRepository detailRepository, ProductStockRepository stockRepository,
-            StoreRepository storeRepository, InventoryMovementRepository movementRepository,
-            AuditLogService auditLogService) {
         this.countRepository = countRepository;
         this.detailRepository = detailRepository;
         this.stockRepository = stockRepository;
         this.storeRepository = storeRepository;
         this.movementRepository = movementRepository;
-        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -45,12 +39,6 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         InventoryCount count = InventoryCount.builder().description(request.getDescripcion().trim())
                 .createdBy(usuario).sucursal(store).status(InventoryCountStatus.DRAFT).build();
         InventoryCount saved = countRepository.save(count);
-        auditLogService.record(
-                "INVENTORY", "INVENTORY_COUNT", saved.getId().toString(), "CREATED",
-                usuario, store, null,
-                Map.of("status", saved.getStatus().name(), "description", saved.getDescription()),
-                "Inventario físico #" + saved.getId() + " creado", "WEB"
-        );
         return response(saved);
     }
 
@@ -71,13 +59,6 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         count.setStatus(InventoryCountStatus.IN_PROGRESS);
         count.setStartedAt(LocalDateTime.now());
         InventoryCount saved = countRepository.save(count);
-        auditLogService.record(
-                "INVENTORY", "INVENTORY_COUNT", saved.getId().toString(), "STATUS_CHANGED",
-                usuario, saved.getSucursal(),
-                Map.of("status", InventoryCountStatus.DRAFT.name()),
-                Map.of("status", InventoryCountStatus.IN_PROGRESS.name()),
-                "Inventario físico #" + saved.getId() + " iniciado", "WEB"
-        );
         return response(saved);
     }
 
@@ -88,19 +69,10 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         InventoryCountDetail d = detailRepository.findByInventoryCountIdAndProductId(id, request.getProductoId())
                 .orElseThrow(() -> new IllegalArgumentException("Producto fuera del inventario"));
         if (Boolean.TRUE.equals(d.getAdjustmentApplied())) throw new IllegalStateException("Ajuste ya aplicado");
-        BigDecimal previousCount = d.getCountedStock();
         d.setCountedStock(request.getCantidadContada());
         d.setDifference(request.getCantidadContada().subtract(d.getExpectedStock()));
         d.setNotes(request.getObservaciones());
         detailRepository.save(d);
-        auditLogService.record(
-                "INVENTORY", "INVENTORY_COUNT_LINE", d.getId().toString(), "COUNT_RECORDED",
-                usuario, count.getSucursal(),
-                Map.of("countedStock", previousCount != null ? previousCount : d.getExpectedStock()),
-                Map.of("countedStock", d.getCountedStock(), "difference", d.getDifference(),
-                        "productId", d.getProduct().getId(), "inventoryCountId", count.getId()),
-                "Conteo físico registrado para " + d.getProduct().getSku(), "WEB"
-        );
         return response(count);
     }
 
@@ -129,17 +101,6 @@ public class InventoryCountServiceImpl implements InventoryCountService {
                         .cantidad(delta.abs()).stockAnterior(before).stockNuevo(after)
                         .motivo("Inventario físico #" + count.getId() + (d.getNotes() == null ? "" : " - " + d.getNotes()))
                         .tipoReferencia("INVENTORY_COUNT").referenciaId(count.getId()).usuario(usuario).build());
-                auditLogService.record(
-                        "INVENTORY", "INVENTORY_MOVEMENT", savedMovement.getId().toString(),
-                        "STOCK_MOVED", usuario, count.getSucursal(),
-                        Map.of("stock", before),
-                        Map.of("stock", after, "movementType", MovementType.ADJUSTMENT.name(),
-                                "quantity", delta.abs(), "inventoryCountId", count.getId(),
-                                "productId", d.getProduct().getId()),
-                        "Ajuste de stock por inventario físico #" + count.getId()
-                                + " para " + d.getProduct().getSku(),
-                        "INVENTORY_COUNT"
-                );
             }
             d.setDifference(delta);
             d.setAdjustmentApplied(true);
@@ -148,14 +109,6 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         count.setStatus(InventoryCountStatus.COMPLETED);
         count.setCompletedAt(LocalDateTime.now());
         InventoryCount saved = countRepository.save(count);
-        auditLogService.record(
-                "INVENTORY", "INVENTORY_COUNT", saved.getId().toString(), "STATUS_CHANGED",
-                usuario, saved.getSucursal(),
-                Map.of("status", InventoryCountStatus.IN_PROGRESS.name()),
-                Map.of("status", InventoryCountStatus.COMPLETED.name(),
-                        "completedAt", saved.getCompletedAt().toString()),
-                "Inventario físico #" + saved.getId() + " completado", "WEB"
-        );
         return response(saved);
     }
 
@@ -167,13 +120,6 @@ public class InventoryCountServiceImpl implements InventoryCountService {
         InventoryCountStatus previousStatus = c.getStatus();
         c.setStatus(InventoryCountStatus.CANCELED);
         InventoryCount saved = countRepository.save(c);
-        auditLogService.record(
-                "INVENTORY", "INVENTORY_COUNT", saved.getId().toString(), "STATUS_CHANGED",
-                usuario, saved.getSucursal(),
-                Map.of("status", previousStatus.name()),
-                Map.of("status", InventoryCountStatus.CANCELED.name()),
-                "Inventario físico #" + saved.getId() + " cancelado", "WEB"
-        );
         return response(saved);
     }
 
