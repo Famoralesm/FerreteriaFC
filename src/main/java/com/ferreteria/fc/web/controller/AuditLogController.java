@@ -31,6 +31,16 @@ public class AuditLogController {
             @RequestParam(required = false) String productSku,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String userName,
+            @RequestParam(required = false) String customerRut,
+            @RequestParam(required = false) String customerQuery,
+            @RequestParam(required = false) String customerCommune,
+            @RequestParam(required = false) String customerCity,
+            @RequestParam(required = false) String userQuery,
+            @RequestParam(required = false) String userRole,
+            @RequestParam(required = false) String supplierQuery,
+            @RequestParam(required = false) String supplierRut,
+            @RequestParam(required = false) String supplierCommune,
+            @RequestParam(required = false) String supplierCity,
             @RequestParam(required = false) Long storeId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
@@ -43,7 +53,9 @@ public class AuditLogController {
         }
 
         Page<AuditLogResponse> result = auditLogService.search(
-                module, entityType, entityId, orderNumber, productQuery, productSku, userId, userName, storeId, action,
+                module, entityType, entityId, orderNumber, productQuery, productSku, userId, userName,
+                customerRut, customerQuery, customerCommune, customerCity, userQuery, userRole,
+                supplierQuery, supplierRut, supplierCommune, supplierCity, storeId, action,
                 fromDate, toDate,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
