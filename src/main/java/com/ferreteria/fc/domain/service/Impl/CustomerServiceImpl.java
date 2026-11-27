@@ -201,16 +201,15 @@ public class CustomerServiceImpl implements CustomerService {
 
     public void delete(Long id) {
 
-        if (!customerRepository.existsById(id)) {
-            throw new RuntimeException("Cliente no encontrado");
-        }
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
         auditLogService.recordForCurrentUser(
                 "CUSTOMERS", "CUSTOMER", id.toString(), "DELETED", null,
-                Map.of("exists", true), Map.of("deleted", true),
-                "Cliente eliminado; los datos personales no se copian a la bitácora", "WEB"
+                Map.of("exists", true, "nombre", customer.getNombre()), Map.of("deleted", true),
+                "Cliente eliminado", "WEB"
         );
-        customerRepository.deleteById(id);
+        customerRepository.delete(customer);
     }
 
     private String normalizarRut(String rut) {
