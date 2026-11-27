@@ -231,7 +231,7 @@ public class UserServiceImpl implements UserService {
 
         auditLogService.recordForCurrentUser(
                 "USERS", "USER", user.getId().toString(), "DELETED", null,
-                Map.of("role", user.getRole().name(), "active", user.isActive()),
+                Map.of("name", user.getName(), "role", user.getRole().name(), "active", user.isActive()),
                 null, "Usuario eliminado", "WEB"
         );
         userRepository.delete(user);
