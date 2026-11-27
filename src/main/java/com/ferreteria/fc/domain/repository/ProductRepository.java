@@ -14,6 +14,8 @@ public interface ProductRepository
 
     Optional<Product> findBySku(String sku);
 
+    List<Product> findBySkuContainingIgnoreCase(String sku);
+
     boolean existsBySku(String sku);
 
     boolean existsByBaseUnitId(Long baseUnitId);
