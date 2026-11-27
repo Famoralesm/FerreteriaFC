@@ -2,6 +2,8 @@ package com.ferreteria.fc.domain.service;
 
 import com.ferreteria.fc.domain.dto.response.AuditLogResponse;
 import com.ferreteria.fc.domain.repository.AuditLogRepository;
+import com.ferreteria.fc.domain.repository.OrderRepository;
+import com.ferreteria.fc.domain.repository.ProductRepository;
 import com.ferreteria.fc.domain.repository.UserRepository;
 import com.ferreteria.fc.persistence.entity.AuditLog;
 import com.ferreteria.fc.persistence.entity.Store;
@@ -34,10 +36,19 @@ public class AuditLogService {
 
     private final AuditLogRepository repository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
 
-    public AuditLogService(AuditLogRepository repository, UserRepository userRepository) {
+    public AuditLogService(
+            AuditLogRepository repository,
+            UserRepository userRepository,
+            OrderRepository orderRepository,
+            ProductRepository productRepository
+    ) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
     }
 
     /**
@@ -105,6 +116,8 @@ public class AuditLogService {
             String module,
             String entityType,
             String entityId,
+            String orderNumber,
+            String productQuery,
             Long userId,
             Long storeId,
             String action,
@@ -116,6 +129,28 @@ public class AuditLogService {
             throw new IllegalArgumentException("La fecha inicial no puede ser posterior a la fecha final.");
         }
 
+        String resolvedOrderId = null;
+        if (orderNumber != null && !orderNumber.isBlank()) {
+            resolvedOrderId = orderRepository.findByOrderNumber(orderNumber.trim())
+                    .map(order -> order.getId().toString())
+                    .orElse("__NO_MATCHING_ORDER__");
+        }
+
+        List<String> matchingProductIds = null;
+        if (productQuery != null && !productQuery.isBlank()) {
+            matchingProductIds = productRepository
+                    .findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
+                            productQuery.trim(), productQuery.trim())
+                    .stream()
+                    .map(product -> product.getId().toString())
+                    .toList();
+            if (matchingProductIds.isEmpty()) {
+                return Page.empty(pageable);
+            }
+        }
+
+        final String orderIdFilter = resolvedOrderId;
+        final List<String> productIdFilter = matchingProductIds;
         Specification<AuditLog> specification = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -132,6 +167,12 @@ public class AuditLogService {
             }
             if (normalizedEntityId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("entityId"), normalizedEntityId));
+            }
+            if (orderIdFilter != null) {
+                predicates.add(criteriaBuilder.equal(root.get("entityId"), orderIdFilter));
+            }
+            if (productIdFilter != null) {
+                predicates.add(root.get("entityId").in(productIdFilter));
             }
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
