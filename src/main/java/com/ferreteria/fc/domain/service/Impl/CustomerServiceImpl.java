@@ -86,7 +86,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer saved = customerRepository.save(customer);
         auditLogService.recordForCurrentUser(
                 "CUSTOMERS", "CUSTOMER", saved.getId().toString(), "CREATED", null,
-                null, Map.of("active", saved.getActivo(), "capturedFields",
+                null, Map.of("active", saved.getActivo(), "nombre", saved.getNombre(), "capturedFields",
                         List.of("rut", "nombre", "razonSocial", "giro", "direccion", "comuna", "ciudad", "email", "telefono")),
                 "Cliente creado (datos personales omitidos de la bitácora)", "WEB"
         );
