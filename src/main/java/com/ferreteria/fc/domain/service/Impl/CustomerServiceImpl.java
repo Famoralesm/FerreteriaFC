@@ -189,9 +189,9 @@ public class CustomerServiceImpl implements CustomerService {
                     "CUSTOMERS", "CUSTOMER", updated.getId().toString(),
                     activoAnterior && !updated.getActivo() ? "DEACTIVATED" : !activoAnterior && updated.getActivo() ? "ACTIVATED" : "UPDATED",
                     null,
-                    Map.of("changedFields", changedFields),
-                    Map.of("changedFields", changedFields, "active", updated.getActivo()),
-                    "Cliente actualizado; se registran los campos modificados, no sus datos personales",
+                    Map.of("changedFields", changedFields, "nombre", nombreAnterior),
+                    Map.of("changedFields", changedFields, "nombre", updated.getNombre(), "active", updated.getActivo()),
+                    "Cliente actualizado",
                     "WEB"
             );
         }
