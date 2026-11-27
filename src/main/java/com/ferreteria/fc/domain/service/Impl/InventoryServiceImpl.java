@@ -34,6 +34,7 @@ public class InventoryServiceImpl implements InventoryService {
             ProductStockRepository productStockRepository,
             StoreRepository storeRepository,
             InventoryMovementRepository movementRepository,
+            InventoryCountRepository inventoryCountRepository
     ) {
         this.productRepository = productRepository;
         this.productStockRepository = productStockRepository;
