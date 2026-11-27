@@ -40,6 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
         this.productStockRepository = productStockRepository;
         this.storeRepository = storeRepository;
         this.movementRepository = movementRepository;
+        this.inventoryCountRepository = inventoryCountRepository;
     }
 
     @Override
