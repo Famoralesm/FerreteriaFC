@@ -118,6 +118,7 @@ public class AuditLogService {
             String entityId,
             String orderNumber,
             String productQuery,
+            String productSku,
             Long userId,
             Long storeId,
             String action,
@@ -137,13 +138,19 @@ public class AuditLogService {
         }
 
         List<String> matchingProductIds = null;
-        if (productQuery != null && !productQuery.isBlank()) {
-            matchingProductIds = productRepository
-                    .findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
-                            productQuery.trim(), productQuery.trim())
-                    .stream()
-                    .map(product -> product.getId().toString())
-                    .toList();
+        if ((productQuery != null && !productQuery.isBlank())
+                || (productSku != null && !productSku.isBlank())) {
+            java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+            if (productQuery != null && !productQuery.isBlank()) {
+                productRepository.findBySkuContainingIgnoreCaseOrNameContainingIgnoreCase(
+                                productQuery.trim(), productQuery.trim())
+                        .forEach(product -> ids.add(product.getId().toString()));
+            }
+            if (productSku != null && !productSku.isBlank()) {
+                productRepository.findBySkuContainingIgnoreCase(productSku.trim())
+                        .forEach(product -> ids.add(product.getId().toString()));
+            }
+            matchingProductIds = List.copyOf(ids);
             if (matchingProductIds.isEmpty()) {
                 return Page.empty(pageable);
             }
