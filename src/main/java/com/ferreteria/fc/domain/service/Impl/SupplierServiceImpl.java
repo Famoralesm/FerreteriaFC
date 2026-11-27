@@ -110,9 +110,9 @@ public class SupplierServiceImpl implements SupplierService {
                     "SUPPLIERS", "SUPPLIER", updated.getId().toString(),
                     activoAnterior && !updated.getActivo() ? "DEACTIVATED" : !activoAnterior && updated.getActivo() ? "ACTIVATED" : "UPDATED",
                     null,
-                    Map.of("changedFields", changedFields),
-                    Map.of("changedFields", changedFields, "active", updated.getActivo()),
-                    "Proveedor actualizado; se registran los campos modificados, no sus datos de contacto",
+                    Map.of("changedFields", changedFields, "nombre", nombreAnterior),
+                    Map.of("changedFields", changedFields, "nombre", updated.getNombre(), "active", updated.getActivo()),
+                    "Proveedor actualizado",
                     "WEB"
             );
         }
