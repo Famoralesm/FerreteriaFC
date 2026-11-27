@@ -269,7 +269,7 @@ public class AuditLogService {
     private final List<String> resolveEntityIds(List<String>... criteria) {
         List<java.util.Set<String>> active = java.util.Arrays.stream(criteria)
                 .filter(java.util.Objects::nonNull)
-                .map(java.util.LinkedHashSet::new).toList();
+                .<java.util.Set<String>>map(java.util.LinkedHashSet::new).toList();
         if (active.isEmpty()) return null;
         java.util.Set<String> result = new java.util.LinkedHashSet<>(active.get(0));
         active.stream().skip(1).forEach(result::retainAll);
