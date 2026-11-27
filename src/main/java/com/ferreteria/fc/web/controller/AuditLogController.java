@@ -26,6 +26,8 @@ public class AuditLogController {
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String orderNumber,
+            @RequestParam(required = false) String productQuery,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long storeId,
             @RequestParam(required = false) String action,
@@ -39,7 +41,7 @@ public class AuditLogController {
         }
 
         Page<AuditLogResponse> result = auditLogService.search(
-                module, entityType, entityId, userId, storeId, action,
+                module, entityType, entityId, orderNumber, productQuery, userId, storeId, action,
                 fromDate, toDate,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
