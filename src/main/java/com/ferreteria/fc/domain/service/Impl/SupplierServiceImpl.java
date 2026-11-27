@@ -58,7 +58,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .email(request.getEmail()).activo(request.getActivo() == null ? true : request.getActivo()).build());
         auditLogService.recordForCurrentUser(
                 "SUPPLIERS", "SUPPLIER", saved.getId().toString(), "CREATED", null,
-                null, Map.of("active", saved.getActivo(), "capturedFields",
+                null, Map.of("active", saved.getActivo(), "nombre", saved.getNombre(), "capturedFields",
                         List.of("rut", "nombre", "razonSocial", "giro", "direccion", "ciudad", "comuna", "telefono", "email")),
                 "Proveedor creado (datos de contacto omitidos de la bitácora)", "WEB"
         );
