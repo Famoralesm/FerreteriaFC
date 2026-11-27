@@ -120,6 +120,7 @@ public class AuditLogService {
             String productQuery,
             String productSku,
             Long userId,
+            String userName,
             Long storeId,
             String action,
             LocalDateTime fromDate,
@@ -192,6 +193,11 @@ public class AuditLogService {
             }
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
+            }
+            if (userName != null && !userName.isBlank()) {
+                predicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("userNameSnapshot")),
+                        "%" + userName.trim().toLowerCase(Locale.ROOT) + "%"));
             }
             if (storeId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("store").get("id"), storeId));
