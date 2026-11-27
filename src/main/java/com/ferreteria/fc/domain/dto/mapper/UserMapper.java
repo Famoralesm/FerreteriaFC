@@ -20,6 +20,8 @@ public class UserMapper {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .active(user.isActive())
+                .storeId(user.getSucursal() != null ? user.getSucursal().getId() : null)
+                .storeName(user.getSucursal() != null ? user.getSucursal().getNombre() : null)
                 .avatarUrl(
                         user.getAvatarPath() == null
                                 ? null
