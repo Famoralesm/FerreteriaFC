@@ -23,6 +23,9 @@ public class CreateOrderRequest {
 
     private String phone;
     private String address;
+    private String city;
+    private String commune;
+    private Boolean unknownCustomer;
     @NotNull
     private PaymentMethod paymentMethod;
     private String notes;

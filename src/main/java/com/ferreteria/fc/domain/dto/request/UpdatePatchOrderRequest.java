@@ -20,6 +20,10 @@ public class UpdatePatchOrderRequest {
 
     private String address;
 
+    private String city;
+
+    private String commune;
+
     private PaymentMethod paymentMethod;
 
     private String notes;

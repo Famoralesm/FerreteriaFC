@@ -29,6 +29,8 @@ public class OrderMapper {
                 .customerName(order.getCustomerName())
                 .phone(order.getPhone())
                 .address(order.getAddress())
+                .city(order.getCity())
+                .commune(order.getCommune())
                 .wazeLink(order.getWazeLink())
                 .paymentMethod(order.getPaymentMethod())
                 .paymentStatus(order.getPaymentStatus())
@@ -110,6 +112,8 @@ public class OrderMapper {
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
+        order.setCity(request.getCity());
+        order.setCommune(request.getCommune());
         order.setDeliveryDate(request.getDeliveryDate());
         order.setPaymentMethod(request.getPaymentMethod());
         order.setStatus(request.getStatus());
@@ -132,7 +136,8 @@ public class OrderMapper {
         order.setTotalAmount(items.stream()
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
-        order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
+        order.setWazeLink(request.getAddress() == null || request.getAddress().isBlank()
+                ? null : WazeUtils.generateLink(request.getAddress()));
 
         return order;
     }

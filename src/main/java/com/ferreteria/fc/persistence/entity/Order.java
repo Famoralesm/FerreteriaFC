@@ -45,6 +45,12 @@ public class Order {
     @Column(name = "address")
     private String address;
 
+    @Column(name = "city", length = 150)
+    private String city;
+
+    @Column(name = "commune", length = 150)
+    private String commune;
+
     @Column(name = "waze_link")
     private String wazeLink;
 

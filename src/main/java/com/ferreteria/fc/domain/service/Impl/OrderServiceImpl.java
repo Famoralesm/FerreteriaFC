@@ -76,8 +76,15 @@ public class OrderServiceImpl implements OrderService {
         Order order = new Order();
         order.setOrderNumber(generateOrderNumber(orderRepository.nextOrderNumberValue()));
         order.setCustomerName(request.getCustomerName());
-        order.setPhone(request.getPhone());
-        order.setAddress(request.getAddress());
+        order.setPhone(isBlank(request.getPhone()) ? null : request.getPhone().trim());
+        order.setAddress(isBlank(request.getAddress()) ? null : request.getAddress().trim());
+        order.setCity(isBlank(request.getCity()) ? null : request.getCity().trim());
+        order.setCommune(isBlank(request.getCommune()) ? null : request.getCommune().trim());
+        if (!Boolean.TRUE.equals(request.getUnknownCustomer())
+                && (isBlank(request.getPhone()) || isBlank(request.getAddress())
+                || isBlank(request.getCity()) || isBlank(request.getCommune()))) {
+            throw new IllegalArgumentException("Para clientes registrados debes completar teléfono, dirección, ciudad y comuna.");
+        }
         order.setPaymentMethod(request.getPaymentMethod());
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setStatus(OrderStatus.CREATED);
@@ -421,6 +428,8 @@ public class OrderServiceImpl implements OrderService {
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
+        order.setCity(request.getCity());
+        order.setCommune(request.getCommune());
         order.setDeliveryDate(request.getDeliveryDate());
 
         if (request.getPaymentMethod() != null
@@ -448,7 +457,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setNotes(request.getNotes());
-        order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
+        order.setWazeLink(isBlank(request.getAddress()) ? null : WazeUtils.generateLink(request.getAddress()));
 
         if ((order.getStatus() == OrderStatus.IN_ROUTE || order.getStatus() == OrderStatus.DELIVERED)
                 && request.getItems() != null && !sameItems(order, request.getItems())) {
@@ -522,8 +531,10 @@ public class OrderServiceImpl implements OrderService {
         if (request.getPhone() != null) order.setPhone(request.getPhone());
         if (request.getAddress() != null) {
             order.setAddress(request.getAddress());
-            order.setWazeLink(WazeUtils.generateLink(request.getAddress()));
+            order.setWazeLink(isBlank(request.getAddress()) ? null : WazeUtils.generateLink(request.getAddress()));
         }
+        if (request.getCity() != null) order.setCity(request.getCity());
+        if (request.getCommune() != null) order.setCommune(request.getCommune());
         if (request.getPaymentMethod() != null
                 && order.getPaymentStatus() != PaymentStatus.PENDING
                 && request.getPaymentMethod() != order.getPaymentMethod()) {
@@ -647,11 +658,17 @@ public class OrderServiceImpl implements OrderService {
         }).toList();
     }
 
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
     private Map<String, String> contactAuditSnapshot(Order order) {
         Map<String, String> values = new LinkedHashMap<>();
         values.put("customerName", order.getCustomerName());
         values.put("phone", order.getPhone());
         values.put("address", order.getAddress());
+        values.put("city", order.getCity());
+        values.put("commune", order.getCommune());
         return values;
     }
 

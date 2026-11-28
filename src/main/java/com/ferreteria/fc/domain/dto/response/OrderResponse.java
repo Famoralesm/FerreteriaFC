@@ -17,6 +17,8 @@ public class OrderResponse {
     private String customerName;
     private String phone;
     private String address;
+    private String city;
+    private String commune;
     private String wazeLink;
     private PaymentMethod paymentMethod;
     private PaymentStatus paymentStatus;

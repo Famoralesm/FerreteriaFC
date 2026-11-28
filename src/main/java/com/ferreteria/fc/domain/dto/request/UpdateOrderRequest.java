@@ -21,6 +21,10 @@ public class UpdateOrderRequest {
 
     private String address;
 
+    private String city;
+
+    private String commune;
+
     private LocalDate deliveryDate;
 
     private PaymentMethod paymentMethod;
