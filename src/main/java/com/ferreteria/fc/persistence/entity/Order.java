@@ -39,6 +39,18 @@ public class Order {
     @Column(nullable = false)
     private String customerName;
 
+    @Column(name = "customer_rut", length = 12)
+    private String customerRut;
+
+    @Column(name = "customer_business_name", length = 200)
+    private String customerBusinessName;
+
+    @Column(name = "customer_giro", length = 150)
+    private String customerGiro;
+
+    @Column(name = "customer_email", length = 150)
+    private String customerEmail;
+
     @Column(name = "phone")
     private String phone;
 

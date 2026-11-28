@@ -15,6 +15,10 @@ public class OrderResponse {
     private String orderNumber;
     private LocalDate deliveryDate;
     private String customerName;
+    private String customerRut;
+    private String customerBusinessName;
+    private String customerGiro;
+    private String customerEmail;
     private String phone;
     private String address;
     private String city;

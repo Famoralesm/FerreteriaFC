@@ -27,6 +27,10 @@ public class OrderMapper {
                 .orderNumber(order.getOrderNumber())
                 .deliveryDate(order.getDeliveryDate())
                 .customerName(order.getCustomerName())
+                .customerRut(order.getCustomerRut())
+                .customerBusinessName(order.getCustomerBusinessName())
+                .customerGiro(order.getCustomerGiro())
+                .customerEmail(order.getCustomerEmail())
                 .phone(order.getPhone())
                 .address(order.getAddress())
                 .city(order.getCity())
@@ -110,6 +114,10 @@ public class OrderMapper {
 
         Order order = new Order();
         order.setCustomerName(request.getCustomerName());
+        order.setCustomerRut(request.getCustomerRut());
+        order.setCustomerBusinessName(request.getCustomerBusinessName());
+        order.setCustomerGiro(request.getCustomerGiro());
+        order.setCustomerEmail(request.getCustomerEmail());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
         order.setCity(request.getCity());

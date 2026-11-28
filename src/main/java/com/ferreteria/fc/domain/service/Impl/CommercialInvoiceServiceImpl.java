@@ -117,7 +117,13 @@ public class CommercialInvoiceServiceImpl implements CommercialInvoiceService {
         invoice.setSourceOrder(order);
         invoice.setCreatedBy(user);
         invoice.setCustomerName(order.getCustomerName());
+        invoice.setCustomerRut(order.getCustomerRut());
+        invoice.setCustomerBusinessName(order.getCustomerBusinessName());
+        invoice.setCustomerGiro(order.getCustomerGiro());
+        invoice.setCustomerEmail(order.getCustomerEmail());
         invoice.setCustomerAddress(order.getAddress());
+        invoice.setCustomerCity(order.getCity());
+        invoice.setCustomerCommune(order.getCommune());
         invoice.setCustomerPhone(order.getPhone());
         invoice.setNotes("Generada desde el pedido " + order.getOrderNumber());
         invoice.setStatus(CommercialInvoiceStatus.REGISTERED);

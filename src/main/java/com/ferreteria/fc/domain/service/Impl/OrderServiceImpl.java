@@ -76,6 +76,10 @@ public class OrderServiceImpl implements OrderService {
         Order order = new Order();
         order.setOrderNumber(generateOrderNumber(orderRepository.nextOrderNumberValue()));
         order.setCustomerName(request.getCustomerName());
+        order.setCustomerRut(cleanOptional(request.getCustomerRut()));
+        order.setCustomerBusinessName(cleanOptional(request.getCustomerBusinessName()));
+        order.setCustomerGiro(cleanOptional(request.getCustomerGiro()));
+        order.setCustomerEmail(cleanOptional(request.getCustomerEmail()));
         order.setPhone(isBlank(request.getPhone()) ? null : request.getPhone().trim());
         order.setAddress(isBlank(request.getAddress()) ? null : request.getAddress().trim());
         order.setCity(isBlank(request.getCity()) ? null : request.getCity().trim());
@@ -431,6 +435,10 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("Para clientes registrados debes completar teléfono, dirección, ciudad y comuna.");
         }
         order.setCustomerName(request.getCustomerName());
+        order.setCustomerRut(cleanOptional(request.getCustomerRut()));
+        order.setCustomerBusinessName(cleanOptional(request.getCustomerBusinessName()));
+        order.setCustomerGiro(cleanOptional(request.getCustomerGiro()));
+        order.setCustomerEmail(cleanOptional(request.getCustomerEmail()));
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
         order.setCity(request.getCity());
@@ -533,6 +541,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (request.getDeliveryDate() != null) order.setDeliveryDate(request.getDeliveryDate());
         if (request.getCustomerName() != null) order.setCustomerName(request.getCustomerName());
+        if (request.getCustomerRut() != null) order.setCustomerRut(cleanOptional(request.getCustomerRut()));
+        if (request.getCustomerBusinessName() != null) order.setCustomerBusinessName(cleanOptional(request.getCustomerBusinessName()));
+        if (request.getCustomerGiro() != null) order.setCustomerGiro(cleanOptional(request.getCustomerGiro()));
+        if (request.getCustomerEmail() != null) order.setCustomerEmail(cleanOptional(request.getCustomerEmail()));
         if (request.getPhone() != null) order.setPhone(request.getPhone());
         if (request.getAddress() != null) {
             order.setAddress(request.getAddress());
@@ -663,6 +675,10 @@ public class OrderServiceImpl implements OrderService {
         }).toList();
     }
 
+    private String cleanOptional(String value) {
+        return isBlank(value) ? null : value.trim();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
@@ -670,6 +686,10 @@ public class OrderServiceImpl implements OrderService {
     private Map<String, String> contactAuditSnapshot(Order order) {
         Map<String, String> values = new LinkedHashMap<>();
         values.put("customerName", order.getCustomerName());
+        values.put("customerRut", order.getCustomerRut());
+        values.put("customerBusinessName", order.getCustomerBusinessName());
+        values.put("customerGiro", order.getCustomerGiro());
+        values.put("customerEmail", order.getCustomerEmail());
         values.put("phone", order.getPhone());
         values.put("address", order.getAddress());
         values.put("city", order.getCity());

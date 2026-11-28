@@ -20,6 +20,10 @@ public class CreateOrderRequest {
     private LocalDate deliveryDate;
     @NotBlank
     private String customerName;
+    private String customerRut;
+    private String customerBusinessName;
+    private String customerGiro;
+    private String customerEmail;
 
     private String phone;
     private String address;
