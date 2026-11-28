@@ -3,6 +3,7 @@ package com.ferreteria.fc.domain.dto.request;
 import com.ferreteria.fc.domain.enums.OrderStatus;
 import com.ferreteria.fc.domain.enums.PaymentMethod;
 import lombok.*;
+import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 @Builder
 public class UpdateOrderRequest {
 
+    @NotBlank
     private String customerName;
 
 
@@ -24,6 +26,8 @@ public class UpdateOrderRequest {
     private String city;
 
     private String commune;
+
+    private Boolean unknownCustomer;
 
     private LocalDate deliveryDate;
 

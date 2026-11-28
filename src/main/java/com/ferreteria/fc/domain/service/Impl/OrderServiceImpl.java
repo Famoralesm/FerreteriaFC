@@ -425,6 +425,11 @@ public class OrderServiceImpl implements OrderService {
         Map<String, String> previousContact = contactAuditSnapshot(order);
         OrderStatus previousStatus = order.getStatus();
 
+        if (!Boolean.TRUE.equals(request.getUnknownCustomer())
+                && (isBlank(request.getPhone()) || isBlank(request.getAddress())
+                || isBlank(request.getCity()) || isBlank(request.getCommune()))) {
+            throw new IllegalArgumentException("Para clientes registrados debes completar teléfono, dirección, ciudad y comuna.");
+        }
         order.setCustomerName(request.getCustomerName());
         order.setPhone(request.getPhone());
         order.setAddress(request.getAddress());
