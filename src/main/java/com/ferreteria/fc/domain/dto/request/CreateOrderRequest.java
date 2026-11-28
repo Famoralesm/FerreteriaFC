@@ -1,7 +1,6 @@
 package com.ferreteria.fc.domain.dto.request;
 
 import com.ferreteria.fc.domain.enums.PaymentMethod;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -23,7 +22,6 @@ public class CreateOrderRequest {
     private String customerName;
 
     private String phone;
-    @NotBlank
     private String address;
     @NotNull
     private PaymentMethod paymentMethod;

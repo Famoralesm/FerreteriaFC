@@ -86,7 +86,7 @@ public class UserServiceImpl implements UserService {
                 .sucursal(sucursal)
                 .build();
 
-        User saved = userRepository.save(user);
+        User saved = userRepository.saveAndFlush(user);
         auditLogService.recordForCurrentUser(
                 "USERS", "USER", saved.getId().toString(), "CREATED", null,
                 null, Map.of("name", saved.getName(), "role", saved.getRole().name(),
@@ -100,7 +100,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserResponse> getAll() {
 
-        return userRepository.findAll()
+        return userRepository.findAllWithSucursal()
                 .stream()
                 .map(UserMapper::toResponse)
                 .toList();
@@ -248,7 +248,7 @@ public class UserServiceImpl implements UserService {
 
     private User findUser(Long id) {
 
-        return userRepository.findById(id)
+        return userRepository.findWithSucursalById(id)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Usuario no encontrado: " + id

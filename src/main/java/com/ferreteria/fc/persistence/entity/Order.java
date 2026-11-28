@@ -39,10 +39,10 @@ public class Order {
     @Column(nullable = false)
     private String customerName;
 
-    @Column(nullable = false)
+    @Column(name = "phone")
     private String phone;
 
-    @Column(nullable = false)
+    @Column(name = "address")
     private String address;
 
     @Column(name = "waze_link")

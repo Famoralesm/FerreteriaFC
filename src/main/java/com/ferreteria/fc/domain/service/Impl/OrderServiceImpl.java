@@ -115,7 +115,8 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(items);
         applyWholesalePricing(items);
         recalculateTotal(order);
-        order.setWazeLink(WazeUtils.generateLink(order.getAddress()));
+        order.setWazeLink(order.getAddress() == null || order.getAddress().isBlank()
+                ? null : WazeUtils.generateLink(order.getAddress()));
         Order saved = orderRepository.save(order);
         Map<String, Object> createdValues = orderAuditValues(saved);
         createdValues.put("items", itemsAuditSnapshot(saved));
